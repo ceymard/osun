@@ -1,40 +1,62 @@
 import {CSSProperties} from './types'
 
-/**
- * Generate a "unique" class name
- */
-export function cls(name: string | TemplateStringsArray = ''): string {
-  const generated = (performance.now()).toString(36).replace('.', '')
-  return `${name}_${generated}`
-}
+const time = typeof performance !== 'undefined' ? () => performance.now()
+  : () => {
+    var t = process.hrtime()
+    return t[0] * 1000000 + t[1] + Date.now()
+  }
 
 
-var sheet: string[]
-var raf_value: number | null
+var sheet: string[] = []
+var raf_value: number | null = null
 
 function createStyleNode() {
   if (sheet.length === 0) return
   var s = document.createElement('style')
   s.setAttribute('data-style', cls('typecss'))
-  s.textContent = sheet.join('\n')
+  s.textContent = sheet.join('')
   document.head.appendChild(s)
   raf_value = null
   sheet = []
 }
 
 
-export function rule(_selector: string, ...props: CSSProperties[]): string {
+const re_prop = /[A-Z]/g
+
+
+export function rule(_selector: string, ...props: CSSProperties[]): void {
   // const properties = [] as string[]
-  const name = cls(_selector)
 
   if (arguments.length > 1) {
     // (new Selector(sel)).define(props!)
+    sheet.push(_selector + '{')
 
-    if (raf_value === null)
+    for (var p of props) {
+      for (var pname in p) {
+        const values = (p as any)[pname]
+        for (var value of Array.isArray(values) ? values : [values]) {
+          const n = pname.replace(re_prop, p => '-' + p.toLowerCase())
+          sheet.push(`${n}:${value.toString()};`)
+        }
+      }
+    }
+
+    sheet.push('}')
+
+    if (raf_value === null && typeof window !== 'undefined')
       raf_value = window.requestAnimationFrame(createStyleNode)
   }
+}
 
-  return name
+
+/**
+ * Generate a "unique" class name
+ */
+export function cls(name: string, ...props: CSSProperties[]): string {
+  const generated = (time()).toString(36).replace('.', '')
+  const res = `_${name}_${generated}`
+  rule('.' + res, ...props)
+  return res
 }
 
 
@@ -60,7 +82,12 @@ export class Selector {
   parts: string[]
 
   constructor(parts: string | string[]) {
-    this.parts = typeof parts === 'string' ? ['.' + parts.trim()] : parts
+    if (typeof parts === 'string') {
+      parts = parts.trim()
+      this.parts = [parts[0] === '_' ? '.' + parts : parts]
+    } else {
+      this.parts = parts
+    }
   }
 
   /**
@@ -74,7 +101,7 @@ export class Selector {
    * name|="value" (exactly value or begins by value + '-')
    */
   attr(value: string) {
-    return new Selector(this.parts.map(p => `${p}::[${value}]`))
+    return new Selector(this.parts.map(p => `${p}[${value}]`))
   }
 
   childOf(another: Selector | string) {
@@ -95,7 +122,7 @@ export class Selector {
 
   and(class_name: string): Selector {
     // another will be appended immediately at the end of a
-    return combine(this, s(class_name), (a, b) => `${a}.${b}`)
+    return combine(this, s(class_name), (a, b) => `${a}${b}`)
   }
 
   or(another: Selector | string): Selector {
@@ -112,7 +139,7 @@ export class Selector {
   }
 
   rule(...props: CSSProperties[]) {
-
+    rule(this.parts.join(', '), ...props)
   }
 }
 
@@ -125,11 +152,11 @@ export function s(sel: string | Selector) {
   return sel instanceof Selector ? sel : new Selector(sel)
 }
 
-var pp = rule('zob', {
+var pp = cls('pp', {
   width: ['pouet', 400]
 })
 
-var pouet = rule('aaa')
+var pouet = cls('pouet')
 
 s(pp).and(pouet).rule({
 
@@ -143,7 +170,7 @@ s('a').descendantOf('body').rule({
 
 })
 
-s(pp).descendantOf(pouet).rule({
+s(pp).descendantOf(pouet).or(s(pouet).descendantOf(pp)).attr('hover="pouet"').rule({
 
 })
 
@@ -151,11 +178,13 @@ all.descendantOf(pouet).rule({
 
 })
 
-export const buttonBar = rule('button-bar')
-export const button = rule('button', {
+export const buttonBar = cls('button-bar')
+export const button = cls('button', {
   border: 0
 })
 
 s(button).childOf(buttonBar).rule({
   paddingBottom: 0
 })
+
+console.log(sheet.join('\n'))
