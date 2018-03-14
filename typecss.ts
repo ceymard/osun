@@ -118,48 +118,51 @@ export class Selector {
     }
   }
 
-  childOf(another: Selector | string) {
-    return mapAll(s(another), this, (a, b) => `${a} > ${b}`)
+  childOf(another: Selector | string, ...props: CSSProperties[]) {
+    return mapAll(s(another), this, (a, b) => `${a} > ${b}`).define(...props)
   }
 
-  in(another: Selector | string): Selector {
-    return mapAll(s(another), this, (a, b) => `${a} >> ${b}`)
+  in(another: Selector | string, ...props: CSSProperties[]): Selector {
+    return mapAll(s(another), this, (a, b) => `${a} >> ${b}`).define(...props)
   }
 
-  siblingOf(another: Selector | string): Selector {
-    return mapAll(s(another), this, (a, b) => `${a} ~ ${b}`)
+  siblingOf(another: Selector | string, ...props: CSSProperties[]): Selector {
+    return mapAll(s(another), this, (a, b) => `${a} ~ ${b}`).define(...props)
   }
 
-  after(another: Selector | string): Selector {
-    return mapAll(s(another), this, (a, b) => `${a} + ${b}`)
+  after(another: Selector | string, ...props: CSSProperties[]): Selector {
+    return mapAll(s(another), this, (a, b) => `${a} + ${b}`).define(...props)
   }
 
   combine(combinator: (this: Selector, another: Selector | string) => Selector, fn: () => void) {
     fn()
   }
 
-  and(class_name: string): Selector {
+  and(class_name: string, ...props: CSSProperties[]): Selector {
     if (class_name[0] !== '.') class_name = '.' + class_name
     // another will be appended immediately at the end of a
-    return mapAll(this, s(class_name), (a, b) => `${a}${b}`)
+    return mapAll(this, s(class_name), (a, b) => `${a}${b}`).define(...props)
   }
 
-  or(another: Selector | string): Selector {
+  or(another: Selector | string, ...props: CSSProperties[]): Selector {
     const other = s(another)
-    return new Selector([...this.parts, ...other.parts])
+    return (new Selector([...this.parts, ...other.parts])).define(...props)
   }
 
-  append(str: string) {
-    return new Selector(this.parts.map(p => `${p}${str}`))
+  append(str: string, ...props: CSSProperties[]) {
+    return (new Selector(this.parts.map(p => `${p}${str}`))).define(...props)
   }
 
-  rule(...props: CSSProperties[]) {
-    var sel: Selector = this
-    // Compute the final selector if it had combinators
-    for (var c of combinators) {
-      sel = c(sel)
+  define(...props: CSSProperties[]) {
+    if (props.length > 0) {
+      var sel: Selector = this
+      // Compute the final selector if it had combinators
+      for (var c of combinators) {
+        sel = c(sel)
+      }
+      rule(sel.parts.join(', '), ...props)
     }
-    rule(sel.parts.join(', '), ...props)
+    return this
   }
 }
 
@@ -178,10 +181,17 @@ export const empty = new Selector('') // empty should not be defined
  * This function also accepts TemplateStringArrays, which means it can be called
  * as s`h1` or s`path` to make element selectors apparent.
  */
-export function s(sel: string | Selector | TemplateStringsArray) {
-  if (sel instanceof Selector) return sel
-  var st: string = Array.isArray(sel) ? sel[0] : (sel as string).split(' ')[0]
-  return new Selector(st)
+export function s(sel: string | Selector | TemplateStringsArray, ...props: CSSProperties[]) {
+  if (!(sel instanceof Selector)) {
+    var st: string = Array.isArray(sel) ? sel[0].split(/\s*,\s*/g) : (sel as string).split(' ')[0]
+    sel = new Selector(st)
+  }
+
+  if (props.length > 0) {
+    sel.define(...props)
+  }
+
+  return sel
 }
 
 
