@@ -9,6 +9,8 @@
         "importHelpers": true,
         "strict": true,
         "noUnusedLocals": true,
+        "rootDir": "./src",
+        "outDir": "./lib",
         "lib": ["es6", "dom"]
     }
 }

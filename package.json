@@ -1,6 +1,6 @@
 {
   "name": "typecss",
   "version": "0.1.0",
-  "main": "./typecss.js",
-  "types": "./typecss.d.ts"
+  "main": "./lib/typecss.js",
+  "types": "./lib/typecss.d.ts"
 }
