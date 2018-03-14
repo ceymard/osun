@@ -6,7 +6,6 @@ const time = typeof performance !== 'undefined' ? () => performance.now()
     return t[0] * 1000000 + t[1] + Date.now()
   }
 
-
 var sheet: string[] = []
 var raf_value: number | null = null
 
@@ -14,18 +13,26 @@ function createStyleNode() {
   if (sheet.length === 0) return
   var s = document.createElement('style')
   s.setAttribute('data-style', cls('typecss'))
-  s.textContent = sheet.join('')
+  s.textContent = getStyles()
   document.head.appendChild(s)
   raf_value = null
-  sheet = []
 }
 
 
-const re_prop = /[A-Z]/g
+function getStyles() {
+  var res = sheet.join('')
+  sheet = []
+  return res
+}
+
+
+const re_prop = /([A-Z]|^(webkit|moz|ms))/g
 
 
 export function rule(_selector: string, ...props: CSSProperties[]): void {
   // const properties = [] as string[]
+
+  if (props.length === 0) return
 
   if (arguments.length > 1) {
     // (new Selector(sel)).define(props!)
@@ -52,15 +59,26 @@ export function rule(_selector: string, ...props: CSSProperties[]): void {
 /**
  * Generate a "unique" class name
  */
-export function cls(name: string, ...props: CSSProperties[]): string {
+export function cls(name: string, ...props_or_classes: (CSSProperties | string)[]): string {
   const generated = (time()).toString(36).replace('.', '')
   const res = `_${name}_${generated}`
+  var all = res
+
+
+  const props: CSSProperties[] = []
+  for (var p of props_or_classes) {
+    if (typeof p === 'string')
+      all += ' ' + p // add class names to the result
+    else
+      props.push(p)
+  }
+
   rule('.' + res, ...props)
-  return res
+  return all
 }
 
 
-function combine(a: Selector, b: Selector, fn: (a: string, b: string) => string) {
+function mapAll(a: Selector, b: Selector, fn: (a: string, b: string) => string) {
   var res = [] as string[]
 
   for (var _a of a.parts) {
@@ -73,10 +91,20 @@ function combine(a: Selector, b: Selector, fn: (a: string, b: string) => string)
 }
 
 
+const combinators = [] as ((s: Selector) => Selector)[]
+export function combine(combinator: (s: Selector) => Selector, fn: () => void) {
+  combinators.push(combinator)
+  fn()
+  combinators.pop()
+}
+
+
 export class Selector {
 
+  static combinators: ((this: Selector, another: Selector | string) => Selector)[]
+
   /**
-   * These are all the or-ed parts that will be joined together with ','
+   * These are all the or-ed parts that will be joined together with '|'
    * when defined
    */
   parts: string[]
@@ -84,45 +112,36 @@ export class Selector {
   constructor(parts: string | string[]) {
     if (typeof parts === 'string') {
       parts = parts.trim()
-      this.parts = [parts[0] === '_' ? '.' + parts : parts]
+      this.parts = [parts.replace(/\b\s*_/g, s => '._')]
     } else {
       this.parts = parts
     }
   }
 
-  /**
-   * Where value can be any of
-   * name
-   * name="value" (exactly value)
-   * name*="value" (contains value)
-   * name^="value" (prefixed by value)
-   * name$="value" (ends with value)
-   * name~="value" (name contains words separated by spaces, one of which is value)
-   * name|="value" (exactly value or begins by value + '-')
-   */
-  attr(value: string) {
-    return new Selector(this.parts.map(p => `${p}[${value}]`))
-  }
-
   childOf(another: Selector | string) {
-    return combine(s(another), this, (a, b) => `${a} > ${b}`)
+    return mapAll(s(another), this, (a, b) => `${a} > ${b}`)
   }
 
-  descendantOf(another: Selector | string): Selector {
-    return combine(s(another), this, (a, b) => `${a} >> ${b}`)
+  in(another: Selector | string): Selector {
+    return mapAll(s(another), this, (a, b) => `${a} >> ${b}`)
+  }
+
+  siblingOf(another: Selector | string): Selector {
+    return mapAll(s(another), this, (a, b) => `${a} ~ ${b}`)
   }
 
   after(another: Selector | string): Selector {
-    return combine(s(another), this, (a, b) => `${a} ~ ${b}`)
+    return mapAll(s(another), this, (a, b) => `${a} + ${b}`)
   }
 
-  immediatelyAfter(another: Selector | string): Selector {
-    return combine(s(another), this, (a, b) => `${a} + ${b}`)
+  combine(combinator: (this: Selector, another: Selector | string) => Selector, fn: () => void) {
+    fn()
   }
 
   and(class_name: string): Selector {
+    if (class_name[0] !== '.') class_name = '.' + class_name
     // another will be appended immediately at the end of a
-    return combine(this, s(class_name), (a, b) => `${a}${b}`)
+    return mapAll(this, s(class_name), (a, b) => `${a}${b}`)
   }
 
   or(another: Selector | string): Selector {
@@ -130,16 +149,17 @@ export class Selector {
     return new Selector([...this.parts, ...other.parts])
   }
 
-  pseudoElement(elt: string) {
-    return new Selector(this.parts.map(p => `${p}::${elt}`))
-  }
-
-  pseudoClass(cls: string) {
-    return new Selector(this.parts.map(p => `${p}:${cls}`))
+  append(str: string) {
+    return new Selector(this.parts.map(p => `${p}${str}`))
   }
 
   rule(...props: CSSProperties[]) {
-    rule(this.parts.join(', '), ...props)
+    var sel: Selector = this
+    // Compute the final selector if it had combinators
+    for (var c of combinators) {
+      sel = c(sel)
+    }
+    rule(sel.parts.join(', '), ...props)
   }
 }
 
@@ -152,39 +172,42 @@ export function s(sel: string | Selector) {
   return sel instanceof Selector ? sel : new Selector(sel)
 }
 
-var pp = cls('pp', {
-  width: ['pouet', 400]
-})
+export function keyframes(name: string, keyframes: {[name: string]: CSSProperties}) {
+  name = cls(name)
 
-var pouet = cls('pouet')
+  sheet.push(`@keyframes ${name} {`)
+  for (var prop in keyframes) {
+    rule(prop, keyframes[prop])
+  }
+  sheet.push(`}`)
 
-s(pp).and(pouet).rule({
+  return name
+}
 
-})
 
-all.immediatelyAfter(pouet).rule({
+export function media(query: string, fn: () => void) {
+  sheet.push(`@media ${query} {`)
+  fn()
+  sheet.push(`}`)
+}
 
-})
+export function raw(css: string) {
+  sheet.push(css)
+}
 
-s('a').descendantOf('body').rule({
 
-})
+export type ElementNames = 'a'|'abbr'|'acronym'|'address'|'applet'|'area'|'article'|'aside'|'audio'|'b'|'base'|'basefont'|'bdi'|'bdo'|'big'|'blockquote'|'body'|'br'|'button'|'canvas'|'caption'|'center'|'cite'|'code'|'col'|'colgroup'|'data'|'datalist'|'dd'|'del'|'details'|'dfn'|'dialog'|'dir'|'div'|'dl'|'dt'|'em'|'embed'|'fieldset'|'figcaption'|'figure'|'font'|'footer'|'form'|'frame'|'frameset'|'h1'|'h2'|'h3'|'h4'|'h5'|'h6'|'head'|'header'|'hgroup'|'hr'|'html'|'i'|'iframe'|'img'|'input'|'ins'|'isindex'|'kbd'|'keygen'|'label'|'legend'|'li'|'link'|'main'|'map'|'mark'|'menu'|'menuitem'|'meta'|'meter'|'nav'|'nextid'|'noframes'|'noscript'|'object'|'ol'|'optgroup'|'option'|'output'|'p'|'param'|'picture'|'plaintext'|'pre'|'progress'|'q'|'rb'|'rbc'|'rp'|'rt'|'rtc'|'ruby'|'s'|'samp'|'script'|'section'|'select'|'small'|'source'|'span'|'strike'|'strong'|'style'|'sub'|'summary'|'sup'|'table'|'tbody'|'td'|'template'|'textarea'|'tfoot'|'th'|'thead'|'time'|'title'|'tr'|'track'|'tt'|'u'|'ul'|'var'|'video'|'wbr'|'xmp'|'animate'|'animateMotion'|'animateTransform'|'circle'|'clipPath'|'cursor'|'defs'|'desc'|'discard'|'ellipse'|'feBlend'|'feColorMatrix'|'feComponentTransfer'|'feComposite'|'feConvolveMatrix'|'feDiffuseLighting'|'feDisplacementMap'|'feDistantLight'|'feDropShadow'|'feFlood'|'feFuncA'|'feFuncB'|'feFuncG'|'feFuncR'|'feGaussianBlur'|'feImage'|'feMerge'|'feMergeNode'|'feMorphology'|'feOffset'|'fePointLight'|'feSpecularLighting'|'feSpotLight'|'feTile'|'feTurbulence'|'filter'|'foreignObject'|'g'|'hatch'|'hatchpath'|'image'|'line'|'linearGradient'|'marker'|'mask'|'mesh'|'meshgradient'|'meshpatch'|'meshrow'|'metadata'|'mpath'|'path'|'pattern'|'polygon'|'polyline'|'radialGradient'|'rect'|'set'|'solidcolor'|'stop'|'svg'|'switch'|'symbol'|'text'|'textPath'|'tspan'|'unknown'|'use'|'view'
+const tags = [
+  // HTML Elements
+  'a','abbr','acronym','address','applet','area','article','aside','audio','b','base','basefont','bdi','bdo','big','blockquote','body','br','button','canvas','caption','center','cite','code','col','colgroup','data','datalist','dd','del','details','dfn','dialog','dir','div','dl','dt','em','embed','fieldset','figcaption','figure','font','footer','form','frame','frameset','h1','h2','h3','h4','h5','h6','head','header','hgroup','hr','html','i','iframe','img','input','ins','isindex','kbd','keygen','label','legend','li','link','main','map','mark','menu','menuitem','meta','meter','nav','nextid','noframes','noscript','object','ol','optgroup','option','output','p','param','picture','plaintext','pre','progress','q','rb','rbc','rp','rt','rtc','ruby','s','samp','script','section','select','small','source','span','strike','strong','style','sub','summary','sup','table','tbody','td','template','textarea','tfoot','th','thead','time','title','tr','track','tt','u','ul','var','video','wbr','xmp',
 
-s(pp).descendantOf(pouet).or(s(pouet).descendantOf(pp)).attr('hover="pouet"').rule({
+// SVG elements
+'animate','animateMotion','animateTransform','circle','clipPath','cursor','defs','desc','discard','ellipse','feBlend','feColorMatrix','feComponentTransfer','feComposite','feConvolveMatrix','feDiffuseLighting','feDisplacementMap','feDistantLight','feDropShadow','feFlood','feFuncA','feFuncB','feFuncG','feFuncR','feGaussianBlur','feImage','feMerge','feMergeNode','feMorphology','feOffset','fePointLight','feSpecularLighting','feSpotLight','feTile','feTurbulence','filter','foreignObject','g','hatch','hatchpath','image','line','linearGradient','marker','mask','mesh','meshgradient','meshpatch','meshrow','metadata','mpath','path','pattern','polygon','polyline','radialGradient','rect','set','solidcolor','stop','svg','switch','symbol','text','textPath','tspan','unknown','use', 'view'
+].reduce(
+  (acc, i) => { acc[i] = new Selector(i); return acc },
+  {} as {[name: string]: Selector}
+) as {
+  [name in ElementNames]: Selector
+}
 
-})
-
-all.descendantOf(pouet).rule({
-
-})
-
-export const buttonBar = cls('button-bar')
-export const button = cls('button', {
-  border: 0
-})
-
-s(button).childOf(buttonBar).rule({
-  paddingBottom: 0
-})
-
-console.log(sheet.join('\n'))
+export {tags}
