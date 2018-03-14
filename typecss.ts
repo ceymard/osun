@@ -168,8 +168,20 @@ export const all = new Selector('*')
 export const empty = new Selector('') // empty should not be defined
 
 
+/**
+ * Create a selector from the provided string.
+ * If the selector was already a selector, just return it.
+ *
+ * If the selector contains one or more classes (that start with _), only
+ * the first one is kept.
+ *
+ * This function also accepts TemplateStringArrays, which means it can be called
+ * as s`h1` or s`path` to make element selectors apparent.
+ */
 export function s(sel: string | Selector | TemplateStringsArray) {
-  return sel instanceof Selector ? sel : new Selector(Array.isArray(sel) ? sel[0] : sel)
+  if (sel instanceof Selector) return sel
+  var st: string = Array.isArray(sel) ? sel[0] : (sel as string).split(' ')[0]
+  return new Selector(st)
 }
 
 
