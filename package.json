@@ -1,6 +1,6 @@
 {
-  "name": "typecss",
+  "name": "osun",
   "version": "0.1.0",
-  "main": "./lib/typecss.js",
-  "types": "./lib/typecss.d.ts"
+  "main": "./lib/osun.js",
+  "types": "./lib/osun.d.ts"
 }
