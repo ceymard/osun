@@ -1,10 +1,6 @@
 import {CSSProperties} from './types'
 
-const time = typeof performance !== 'undefined' ? () => performance.now()
-  : () => {
-    var t = process.hrtime()
-    return t[0] * 1000000 + t[1] + Date.now()
-  }
+const rnd = () => Math.round(Math.random() * 10000000000000000)
 
 var sheet: string[] = []
 var raf_value: number | null = null
@@ -60,7 +56,7 @@ export function rule(_selector: string, ...props: CSSProperties[]): void {
  * Generate a "unique" class name
  */
 export function cls(name: string, ...props_or_classes: (CSSProperties | string)[]): string {
-  const generated = (time()).toString(36).replace('.', '')
+  const generated = (rnd()).toString(36).replace('.', '')
   const res = `_${name}_${generated}`
   var all = res
 
@@ -112,7 +108,7 @@ export class Selector {
   constructor(parts: string | string[]) {
     if (typeof parts === 'string') {
       parts = parts.trim()
-      this.parts = [parts.replace(/\b\s*_/g, s => '._')]
+      this.parts = [parts.replace(/(^|(?:\s))_/g, s => '._')]
     } else {
       this.parts = parts
     }
@@ -139,6 +135,7 @@ export class Selector {
   }
 
   and(class_name: string, ...props: CSSProperties[]): Selector {
+    class_name = class_name.trim()
     if (class_name[0] !== '.') class_name = '.' + class_name
     // another will be appended immediately at the end of a
     return mapAll(this, s(class_name), (a, b) => `${a}${b}`).define(...props)

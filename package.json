@@ -2,5 +2,9 @@
   "name": "osun",
   "version": "0.1.2",
   "main": "./lib/osun.js",
-  "types": "./lib/osun.d.ts"
+  "types": "./lib/osun.d.ts",
+  "scripts": {
+    "build": "wtsc",
+    "watch": "wtsc -w"
+  }
 }
