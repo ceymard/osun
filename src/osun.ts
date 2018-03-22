@@ -119,7 +119,7 @@ export class Selector {
   }
 
   in(another: Selector | string, ...props: CSSProperties[]): Selector {
-    return mapAll(s(another), this, (a, b) => `${a} >> ${b}`).define(...props)
+    return mapAll(s(another), this, (a, b) => `${a} ${b}`).define(...props)
   }
 
   siblingOf(another: Selector | string, ...props: CSSProperties[]): Selector {
