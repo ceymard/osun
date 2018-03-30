@@ -1,5 +1,7 @@
 import {CSSProperties} from './types'
 
+export {CSSProperties}
+
 const rnd = () => Math.round(Math.random() * 10000000000000000)
 
 var sheet: string[] = []
@@ -190,6 +192,8 @@ export function s(sel: string | Selector | TemplateStringsArray, ...props: CSSPr
 
   return sel
 }
+
+export const selector = s
 
 
 export function keyframes(name: string, keyframes: {[name: string]: CSSProperties}) {
