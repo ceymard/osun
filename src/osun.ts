@@ -34,7 +34,8 @@ const re_prop = /([A-Z]|^(webkit|moz|ms))/g
 
 
 /**
- * Emit a rule to the sheet.
+ * Emit a rule to the sheet. This function is not meant to be called directly,
+ * but rather through the whole selector mechanic.
  */
 export function rule(_selector: string, ...props: CSSProperties[]): void {
   // const properties = [] as string[]
@@ -64,9 +65,18 @@ export function rule(_selector: string, ...props: CSSProperties[]): void {
 
 
 /**
- * Generate a unique class name
- * @param name the basis for the name, which will be included in the
+ * Generate a unique class name and declare its properties as rules if
+ * they were provided. The result is meant to be used to put in `class`
+ * attributes (or `className` if using React).
+ *
+ * The result will generally contain the name of the class that was generated
+ * as well as the names of other classes if they were included.
+ *
+ * @param name: the basis for the name, which will be included in the
  *    result.
+ * @param props_or_classes: either objects that are CSSProperties or other class names
+ *    that can possibly have been generated previously using cls()
+ * @returns a string usable in `class` / `className`
  */
 export function cls(name: string, ...props_or_classes: (CSSProperties | string)[]): string {
   const generated = (rnd()).toString(36).replace('.', '')
