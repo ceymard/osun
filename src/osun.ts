@@ -153,8 +153,12 @@ export class Selector {
     return mapAll(s(another), this, (a, b) => `${a} + ${b}`).define(...props)
   }
 
-  combine(combinator: (this: Selector, another: Selector | string) => Selector, fn: () => void) {
-    fn()
+  children(fn: () => void) {
+    combine(s => s.childOf(this), fn)
+  }
+
+  descendants(fn: () => void) {
+    combine(s => s.in(this), fn)
   }
 
   and(class_name: string, ...props: CSSProperties[]): Selector {
