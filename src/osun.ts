@@ -1,7 +1,13 @@
+/**
+ * CSSProperties are shamelessly stolen from typestyle.
+ */
 import {CSSProperties} from './types'
-
 export {CSSProperties}
 
+/**
+ * A pseudo-random functino that returns a bit enough integer
+ * that will be converted to a base64 class name.
+ */
 const rnd = () => Math.round(Math.random() * 10000000000000000)
 
 var sheet: string[] = []
@@ -27,6 +33,9 @@ function getStyles() {
 const re_prop = /([A-Z]|^(webkit|moz|ms))/g
 
 
+/**
+ * Emit a rule to the sheet.
+ */
 export function rule(_selector: string, ...props: CSSProperties[]): void {
   // const properties = [] as string[]
 
@@ -55,7 +64,9 @@ export function rule(_selector: string, ...props: CSSProperties[]): void {
 
 
 /**
- * Generate a "unique" class name
+ * Generate a unique class name
+ * @param name the basis for the name, which will be included in the
+ *    result.
  */
 export function cls(name: string, ...props_or_classes: (CSSProperties | string)[]): string {
   const generated = (rnd()).toString(36).replace('.', '')
@@ -196,6 +207,15 @@ export function s(sel: string | Selector | TemplateStringsArray, ...props: CSSPr
 export const selector = s
 
 
+/**
+ * Declare keyframes and return a mangled unique name to be used as
+ * the "animation-name" css property.
+ *
+ * @param name: A name to be included in the resulting name for readability
+ * @param keyframes: An object with keys such as "from", "to", "10%", ... and
+ *  values as CSS properties.
+ * @returns a mangled name
+ */
 export function keyframes(name: string, keyframes: {[name: string]: CSSProperties}) {
   name = cls(name)
 
@@ -209,12 +229,34 @@ export function keyframes(name: string, keyframes: {[name: string]: CSSPropertie
 }
 
 
-export function media(query: string, fn: () => void) {
+/**
+ * A dumb media query, will include the contents of `query` right
+ * after `@media`
+ *
+ * @param query: will be included after @media and before {
+ * @param declarations: a function in which to declare selectors and
+ *  their rules.
+ */
+export function media(query: string, declarations: () => void) {
   sheet.push(`@media ${query} {`)
-  fn()
+  declarations()
   sheet.push(`}`)
 }
 
+
+/**
+ *
+ */
+export function page(further_spec: string, declarations: () => void) {
+  sheet.push(`@page ${further_spec} {`)
+  declarations()
+  sheet.push('}')
+}
+
+
+/**
+ * Append the following css to the next style node without processing.
+ */
 export function raw(css: string) {
   sheet.push(css)
 }
