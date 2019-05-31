@@ -78,7 +78,7 @@ export function rule(_selector: string, ...props: CSSProperties[]): void {
  *    that can possibly have been generated previously using cls()
  * @returns a string usable in `class` / `className`
  */
-export function cls(name: string, ...props_or_classes: (CSSProperties | string)[]): string {
+export function cls(name: string, ...props_or_classes: (CSSProperties | string | CssBuilder)[]): string {
   const generated = (rnd()).toString(36).replace('.', '')
   const res = `_${name}_${generated}`
   var all = res
@@ -86,8 +86,8 @@ export function cls(name: string, ...props_or_classes: (CSSProperties | string)[
 
   const props: CSSProperties[] = []
   for (var p of props_or_classes) {
-    if (typeof p === 'string')
-      all += ' ' + p // add class names to the result
+    if (typeof p === 'string' || p instanceof CssBuilder)
+      all += ' ' + p.toString() // add class names to the result
     else
       props.push(p)
   }
@@ -273,4 +273,82 @@ export function page(further_spec: string, declarations: () => void) {
  */
 export function raw(css: string) {
   sheet.push(css)
+}
+
+export type CssCallback = (name: string, props: CSSPropertiesWithDefaults) => void
+export type CSSPropertiesWithDefaults = CSSProperties & { $size?: string, $color?: string }
+export type CssClasses = {[name: string]: CSSPropertiesWithDefaults }
+export type ExtendedCssBuilder<T extends CssClasses> = CssBuilder & {[K in keyof T] : ExtendedCssBuilder<T>}
+
+
+export class CssBuilder {
+
+  // class names cache
+  static cache = {} as {[name: string]: string}
+
+  constructor(
+    public path: string[] = [],
+    public props: CSSPropertiesWithDefaults = {}
+  ) { }
+
+  static from<T extends CssClasses, B extends CssBuilder>(
+    this: new (base: string[], props?: CSSPropertiesWithDefaults) => B,
+    base: string,
+    desc: T,
+    props: CSSPropertiesWithDefaults = {}
+  ): ExtendedCssBuilder<T> {
+    // const Base
+    class ExtendedCssBuild extends (this as any) { }
+
+    for (let p in desc) {
+      const pr = (desc as any)[p]
+      Object.defineProperty(ExtendedCssBuild.prototype, p, {
+        get() {
+          return new this.constructor([...this.path, p], Object.assign({}, this.props, pr))
+        }
+      })
+    }
+
+    var n = new (ExtendedCssBuild as any)([base], props)
+    return n
+  }
+
+  more<U extends CssClasses, T extends CssClasses>(this: ExtendedCssBuilder<U>, desc: T): ExtendedCssBuilder<T & U>
+  more<T extends CssClasses>(desc: T): ExtendedCssBuilder<T>
+  more<T extends CssClasses>(desc: T): ExtendedCssBuilder<T>  {
+    return (this.constructor as any).from(this.path[0], desc, this.props)
+  }
+
+  toString() {
+    const name = [this.path[0], ...this.path.slice(1).sort()].join('__')
+    const c = CssBuilder.cache
+    const prev = c[name]
+    if (prev) return prev
+
+    var {$size, $color, ...rest} = this.props
+
+    var rest: CSSProperties = {}
+    var dct: {[name :string]: string} = {}
+    for (var x in this.props) {
+      if (x[0] === '$') {
+        dct[x] = (this.props as any)[x]
+      } else {
+        (rest as any)[x] = (this.props as any)[x]
+      }
+    }
+
+    for (var x in rest) {
+      const p = (rest as any)[x] as string
+      var not_found = false
+      var val = typeof p !== 'string' ? p : p.replace(/\$\w+/g, m => {
+        not_found = not_found || !dct[m]
+        return dct[m]
+      })
+      if (!not_found)
+        (rest as any)[x] = val
+    }
+    var res = cls(name, rest)
+    c[name] = res
+    return res
+  }
 }
