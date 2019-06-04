@@ -44,19 +44,21 @@ export function rule(_selector: string, ...props: CSSProperties[]): void {
 
   if (arguments.length > 1) {
     // (new Selector(sel)).define(props!)
-    sheet.push(_selector + '{')
+    const def = [] as string[]
+    def.push(_selector + '{')
 
     for (var p of props) {
       for (var pname in p) {
         const values = (p as any)[pname]
         for (var value of Array.isArray(values) ? values : [values]) {
           const n = pname.replace(re_prop, p => '-' + p.toLowerCase())
-          sheet.push(`${n}:${value.toString()};`)
+          def.push(`${n}:${value.toString()};`)
         }
       }
     }
 
-    sheet.push('}')
+    def.push('}')
+    sheet.push(def.join(''))
 
     if (raf_value === null && typeof window !== 'undefined')
       raf_value = window.requestAnimationFrame(createStyleNode)
@@ -276,7 +278,7 @@ export function raw(css: string) {
 }
 
 export type CssCallback = (name: string, props: CSSPropertiesWithDefaults) => void
-export type CSSPropertiesWithDefaults = CSSProperties & { $size?: string, $color?: string }
+export type CSSPropertiesWithDefaults = CSSProperties & { $size?: string, $color?: string } | ((this: CssBuilder, kls: string) => void)
 export type CssClasses = {[name: string]: CSSPropertiesWithDefaults }
 export type ExtendedCssBuilder<T extends CssClasses> = CssBuilder & {[K in keyof T] : ExtendedCssBuilder<T>}
 
@@ -288,7 +290,8 @@ export class CssBuilder {
 
   constructor(
     public path: string[] = [],
-    public props: CSSPropertiesWithDefaults = {}
+    public props: CSSPropertiesWithDefaults = {},
+    public cbks: Function[] = []
   ) { }
 
   static from<T extends CssClasses, B extends CssBuilder>(
@@ -304,7 +307,9 @@ export class CssBuilder {
       const pr = (desc as any)[p]
       Object.defineProperty(ExtendedCssBuild.prototype, p, {
         get() {
-          return new this.constructor([...this.path, p], Object.assign({}, this.props, pr))
+          if (typeof pr === 'function')
+            return new this.constructor([...this.path, p], this.props, [...this.cbks, pr])
+          return new this.constructor([...this.path, p], Object.assign({}, this.props, pr), this.cbks)
         }
       })
     }
@@ -316,19 +321,40 @@ export class CssBuilder {
   more<U extends CssClasses, T extends CssClasses>(this: ExtendedCssBuilder<U>, desc: T): ExtendedCssBuilder<T & U>
   more<T extends CssClasses>(desc: T): ExtendedCssBuilder<T>
   more<T extends CssClasses>(desc: T): ExtendedCssBuilder<T>  {
-    return (this.constructor as any).from(this.path[0], desc, this.props)
+    return (this.constructor as any).from(this.path[0], desc, this.props, this.cbks)
+  }
+
+  get name() {
+    return [this.path[0], ...this.path.slice(1).sort()].join('__')
+  }
+
+  protected _dict: {[name: string]: string} = {}
+
+  getProps(props: CSSProperties) {
+    var res = {} as CSSProperties
+    const dct = this._dict
+    for (var x in props) {
+      const p = (props as any)[x] as string
+      var not_found = false
+      var val = typeof p !== 'string' ? p : p.replace(/\$\w+/g, m => {
+        not_found = not_found || !dct[m]
+        return dct[m]
+      })
+      if (!not_found) {
+        (res as any)[x] = val
+      }
+    }
+    return res
   }
 
   toString() {
-    const name = [this.path[0], ...this.path.slice(1).sort()].join('__')
+    const name = this.name
     const c = CssBuilder.cache
     const prev = c[name]
     if (prev) return prev
 
-    var {$size, $color, ...rest} = this.props
-
     var rest: CSSProperties = {}
-    var dct: {[name :string]: string} = {}
+    var dct: {[name :string]: string} = this._dict
     for (var x in this.props) {
       if (x[0] === '$') {
         dct[x] = (this.props as any)[x]
@@ -337,18 +363,13 @@ export class CssBuilder {
       }
     }
 
-    for (var x in rest) {
-      const p = (rest as any)[x] as string
-      var not_found = false
-      var val = typeof p !== 'string' ? p : p.replace(/\$\w+/g, m => {
-        not_found = not_found || !dct[m]
-        return dct[m]
-      })
-      if (!not_found)
-        (rest as any)[x] = val
-    }
-    var res = cls(name, rest)
+    var res = cls(name, this.getProps(rest))
     c[name] = res
+
+    for (var _ of this.cbks) {
+      _.call(this, res)
+    }
+
     return res
   }
 }
