@@ -6,5 +6,8 @@
   "scripts": {
     "build": "wtsc",
     "watch": "wtsc -w"
+  },
+  "dependencies": {
+    "csstype": "^2.6.5"
   }
 }

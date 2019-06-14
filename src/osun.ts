@@ -1,8 +1,11 @@
 /**
  * CSSProperties are shamelessly stolen from typestyle.
  */
-import {CSSProperties} from './types'
-export {CSSProperties}
+// import {CSSProperties} from './types'
+import * as CSS from 'csstype'
+export type CSSProperties = CSS.PropertiesFallback
+
+// export {CSSProperties}
 
 /**
  * A pseudo-random functino that returns a bit enough integer
@@ -30,7 +33,7 @@ function getStyles() {
 }
 
 
-const re_prop = /([A-Z]|^(webkit|moz|ms))/g
+const re_prop = /([A-Z]|^(webkit|moz|ms))/gi
 
 
 /**
