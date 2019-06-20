@@ -33,7 +33,7 @@ function getStyles() {
 }
 
 
-const re_prop = /([A-Z]|^(webkit|moz|ms))/gi
+const re_prop = /([A-Z]|^([wW]ebkit|[mM]oz|[mM]s))/g
 
 
 /**
