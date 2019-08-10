@@ -376,3 +376,57 @@ export class CssBuilder {
     return res
   }
 }
+
+
+// border
+//    - 1px solid tint
+//    .width
+//       .px4
+//    - 4px solid tint
+//    .dashed
+//    - 4px dashed tint
+//    .color('#999999')
+
+
+// I want to do stuff like
+// border.width.px1.round.pct50
+//    -- defaults for color
+// border.width.px1.tint50.round
+// border.width('15px').color('#9493')
+// if there are defaults, then it should offer to come back to the regular builder.
+// if not, then it just offers to keep building with the attributes
+
+// What if there is a context :
+// border.top.width.px2.tint50.bottom.width.px4.tint50
+// position.absolute.top.left('-50%')
+
+// flex.gap : sizes + the rest -> always asks or is normal ?
+// gap is thus a builder ?
+// flex alone is a column with normal gap ?
+
+// export function color(col: string) {
+//   return { backgroundColor: col }
+// }
+
+// //
+// @memoize
+// export function gap(width: string) {
+//   var res = cls('gap-${width}')
+//   s`*`.childOf(res, {
+
+//   })
+//   return res
+// }
+
+
+export class ComplexCssBuilder {
+
+  static create() {
+
+  }
+
+  extend() {
+
+  }
+
+}
