@@ -5,69 +5,118 @@
 import * as CSS from 'csstype'
 export type CSSProperties = CSS.PropertiesFallback
 
-// export {CSSProperties}
+export class BaseBuilder {
+  path: string[] = []
+  props: CSSProperties[] = []
 
-/**
- * A pseudo-random functino that returns a bit enough integer
- * that will be converted to a base64 class name.
- */
-const rnd = () => Math.round(Math.random() * 10000000000000000)
+  /**
+   * Builder can be used as a class too !
+   */
+  className() {
+    const name = this.path.join('-')
+    rule`.${name}`(...this.props)
+    return name
+  }
+
+}
+
+export type ChangeReturnType<F extends Function, NewR> = F extends (...a: infer A) => any ? (...a: A) => NewR : never
+
+export type Builder<T> = BaseBuilder
+  & {[K in keyof T]:
+      T[K] extends Function ?
+        ChangeReturnType<T[K], Builder<T>>
+        : Builder<T>
+    }
+
+export function MakeBuilder<T>(props: {[name in keyof T]: CSSProperties | ((this: CssClass, ...a: any[]) => CSSProperties)}): Builder<T> {
+  return null!
+}
+
+export type CssBuild = CSSProperties | Builder<{}>
+
 
 var sheet: string[] = []
 var raf_value: number | null = null
 
+
+/**
+ * Create a new style node with the currently defined styles.
+ */
 function createStyleNode() {
   if (sheet.length === 0) return
   var s = document.createElement('style')
-  s.setAttribute('data-style', cls('typecss'))
-  s.textContent = getStyles()
+  s.setAttribute('data-style', clsname('typecss'))
+  s.textContent = getCurrentStyles()
   document.head.appendChild(s)
   raf_value = null
 }
 
 
-function getStyles() {
+/**
+ * Get the styles currently defined and reset them
+ */
+function getCurrentStyles() {
   var res = sheet.join('')
   sheet = []
   return res
 }
 
+/**
+ *
+ */
+function conclude() {
+  if (_last_selector) {
+    sheet.push('}')
+  }
+  _last_selector = ''
+}
 
 const re_prop = /([A-Z]|^([wW]ebkit|[mM]oz|[mM]s))/g
 
 
-/**
- * Emit a rule to the sheet. This function is not meant to be called directly,
- * but rather through the whole selector mechanic.
- */
-export function rule(_selector: string, ...props: CSSProperties[]): void {
-  // const properties = [] as string[]
+var _last_selector = ''
+export function rule(arr: TemplateStringsArray, ...values: (CssClass | string)[]) {
+  const sel = arr.map((str, i) => `${str}${values[i] ? values[i].toString() : ''}`).join('')
 
-  if (props.length === 0) return
+  if (!_last_selector || _last_selector !== sel) {
+    conclude()
+    _last_selector = sel
+  }
 
-  if (arguments.length > 1) {
-    // (new Selector(sel)).define(props!)
-    const def = [] as string[]
-    def.push(_selector + '{')
-
+  return function (...props: CSSProperties[]) {
+    sheet.push(`${sel}{`) // will be closed by conclude()
     for (var p of props) {
       for (var pname in p) {
         const values = (p as any)[pname]
         for (var value of Array.isArray(values) ? values : [values]) {
           const n = pname.replace(re_prop, p => '-' + p.toLowerCase())
-          def.push(`${n}:${value.toString()};`)
+          sheet.push(`${n}:${value.toString()};`)
         }
       }
     }
 
-    def.push('}')
-    sheet.push(def.join(''))
-
-    if (raf_value === null && typeof window !== 'undefined')
-      raf_value = window.requestAnimationFrame(createStyleNode)
+    if (raf_value === null) {
+      raf_value = raf(() => {
+        createStyleNode()
+        raf_value = null
+      })
+    }
   }
 }
 
+
+const floor = Math.floor
+declare var require: (s: 'perf_hooks') => {performance: typeof window.performance}
+const now = typeof window !== 'undefined' ? performance.now : require('perf_hooks').performance.now
+const start = floor(now() * 1000)
+const raf = typeof window !== 'undefined' ? window.requestAnimationFrame : setTimeout
+/**
+ * Generate a unique class name from a base
+ */
+export function clsname(name: string) {
+  return `_${name}-${floor(now() * 1000) - start}`
+}
 
 /**
  * Generate a unique class name and declare its properties as rules if
@@ -83,147 +132,89 @@ export function rule(_selector: string, ...props: CSSProperties[]): void {
  *    that can possibly have been generated previously using cls()
  * @returns a string usable in `class` / `className`
  */
-export function cls(name: string, ...props_or_classes: (CSSProperties | string | CssBuilder)[]): string {
-  const generated = (rnd()).toString(36).replace('.', '')
-  const res = `_${name}_${generated}`
-  var all = res
+export function cls(name: string, ...props_or_classes: (CssClass | CSSProperties | string | Builder<{}>)[]): CssClass {
+  var names = [clsname(name)]
+  var props: CSSProperties[] = []
 
-
-  const props: CSSProperties[] = []
-  for (var p of props_or_classes) {
-    if (typeof p === 'string' || p instanceof CssBuilder)
-      all += ' ' + p.toString() // add class names to the result
-    else
-      props.push(p)
-  }
-
-  rule('.' + res, ...props)
-  return all
-}
-
-
-function mapAll(a: Selector, b: Selector, fn: (a: string, b: string) => string) {
-  var res = [] as string[]
-
-  for (var _a of a.parts) {
-    for (var _b of b.parts) {
-      res.push(fn(_a, _b))
-    }
-  }
-
-  return new Selector(res)
-}
-
-
-const combinators = [] as ((s: Selector) => Selector)[]
-export function combine(combinator: (s: Selector) => Selector, fn: () => void) {
-  combinators.push(combinator)
-  fn()
-  combinators.pop()
-}
-
-
-export class Selector {
-
-  static combinators: ((this: Selector, another: Selector | string) => Selector)[]
-
-  /**
-   * These are all the or-ed parts that will be joined together with '|'
-   * when defined
-   */
-  parts: string[]
-
-  constructor(parts: string | string[]) {
-    if (typeof parts === 'string') {
-      parts = parts.trim()
-      this.parts = [parts.replace(/(^|(?:\s))_/g, s => '._')]
+  for (var component of props_or_classes) {
+    if (typeof component === 'string') {
+      // This is a CSS class
+      names.push(component)
+    } else if (component instanceof CssClass) {
+      names = [...names, ...component.classes]
+    } else if (component instanceof BaseBuilder) {
+      props = [...props, ...component.props]
     } else {
-      this.parts = parts
+      props.push(component)
     }
   }
 
-  childOf(another: Selector | string, ...props: CSSProperties[]) {
-    return mapAll(s(another), this, (a, b) => `${a} > ${b}`).define(...props)
+  // Now, push the properties onto the first classname
+  rule`.${names[0]}`(...props)
+  return new CssClass(names)
+}
+
+
+export class CssClass {
+
+  constructor(public classes: string[]) {
+
   }
 
-  in(another: Selector | string, ...props: CSSProperties[]): Selector {
-    return mapAll(s(another), this, (a, b) => `${a} ${b}`).define(...props)
-  }
+  className() { return this.classes }
+  toString() { return this.classes.map(c => `.${c}`).join('') }
 
-  siblingOf(another: Selector | string, ...props: CSSProperties[]): Selector {
-    return mapAll(s(another), this, (a, b) => `${a} ~ ${b}`).define(...props)
-  }
-
-  after(another: Selector | string, ...props: CSSProperties[]): Selector {
-    return mapAll(s(another), this, (a, b) => `${a} + ${b}`).define(...props)
-  }
-
-  children(fn: () => void) {
-    combine(s => s.childOf(this), fn)
-  }
-
-  descendants(fn: () => void) {
-    combine(s => s.in(this), fn)
-  }
-
-  and(class_name: string, ...props: CSSProperties[]): Selector {
-    class_name = class_name.trim()
-    if (class_name[0] !== '.') class_name = '.' + class_name
-    // another will be appended immediately at the end of a
-    return mapAll(this, s(class_name), (a, b) => `${a}${b}`).define(...props)
-  }
-
-  or(another: Selector | string, ...props: CSSProperties[]): Selector {
-    const other = s(another)
-    return (new Selector([...this.parts, ...other.parts])).define(...props)
-  }
-
-  append(str: string, ...props: CSSProperties[]) {
-    return (new Selector(this.parts.map(p => `${p}${str}`))).define(...props)
-  }
-
-  define(...props: CSSProperties[]) {
-    if (props.length > 0) {
-      var sel: Selector = this
-      // Compute the final selector if it had combinators
-      for (var c of combinators) {
-        sel = c(sel)
-      }
-      rule(sel.parts.join(', '), ...props)
-    }
+  first(...props: CSSProperties[]) {
+    rule`${this}:first-child`(...props)
     return this
   }
+
+  firstIn(...props: CssBuild[]) {
+    return this
+  }
+
+  last(...props: CssBuild[]) {
+    return this
+  }
+
+  nth(n: string | number, ...props: CssBuild[]) {
+    return this
+  }
+
+  nthIn(n: string | number, ...props: CssBuild[]) {
+
+    return this
+  }
+
+  firstChild(...props: CssBuild[]): this {
+    return this
+  }
+
+  lastChild(...props: CssBuild[]): this {
+    return this
+  }
+
+  hover(...props: CssBuild[]): this {
+    return this
+  }
+
+  and(other: string | CssClass, ...props: CssBuild[]): this {
+    return this
+  }
+
+  placeholder(...props: CssBuild[]) {
+    return this
+  }
+
 }
 
 
-export const all = new Selector('*')
-export const empty = new Selector('') // empty should not be defined
-
-
-/**
- * Create a selector from the provided string.
- * If the selector was already a selector, just return it.
- *
- * If the selector contains one or more classes (that start with _), only
- * the first one is kept.
- *
- * This function also accepts TemplateStringArrays, which means it can be called
- * as s`h1` or s`path` to make element selectors apparent.
- */
-export function s(sel: string | Selector | TemplateStringsArray, ...props: CSSProperties[]) {
-  if (!(sel instanceof Selector)) {
-    var st: string = Array.isArray(sel) ? sel[0].split(/\s*,\s*/g) : (sel as string).split(' ')[0]
-    sel = new Selector(st)
-  }
-
-  if (props.length > 0) {
-    sel.define(...props)
-  }
-
-  return sel
+function scoped(str: string, fn: () => void) {
+  sheet.push(`${str} {`)
+  fn()
+  conclude()
+  sheet.push('}')
 }
-
-export const selector = s
 
 
 /**
@@ -236,13 +227,13 @@ export const selector = s
  * @returns a mangled name
  */
 export function keyframes(name: string, keyframes: {[name: string]: CSSProperties}) {
-  name = cls(name)
+  name = clsname(name)
 
-  sheet.push(`@keyframes ${name} {`)
-  for (var prop in keyframes) {
-    rule(prop, keyframes[prop])
-  }
-  sheet.push(`}`)
+  scoped(`@keyframes ${name}`, () => {
+    for (var prop in keyframes) {
+      rule`${prop}`(keyframes[prop])
+    }
+  })
 
   return name
 }
@@ -257,9 +248,7 @@ export function keyframes(name: string, keyframes: {[name: string]: CSSPropertie
  *  their rules.
  */
 export function media(query: string, declarations: () => void) {
-  sheet.push(`@media ${query} {`)
-  declarations()
-  sheet.push(`}`)
+  scoped(`@media ${query}`, declarations)
 }
 
 
@@ -267,9 +256,7 @@ export function media(query: string, declarations: () => void) {
  *
  */
 export function page(further_spec: string, declarations: () => void) {
-  sheet.push(`@page ${further_spec} {`)
-  declarations()
-  sheet.push('}')
+  scoped(`@page ${further_spec}`, declarations)
 }
 
 
@@ -277,156 +264,22 @@ export function page(further_spec: string, declarations: () => void) {
  * Append the following css to the next style node without processing.
  */
 export function raw(css: string) {
+  conclude()
   sheet.push(css)
 }
 
-export type CssCallback = (name: string, props: CSSPropertiesWithDefaults) => void
-export type CSSPropertiesWithDefaults = CSSProperties & { $size?: string, $color?: string } | ((this: CssBuilder, kls: string) => void)
-export type CssClasses = {[name: string]: CSSPropertiesWithDefaults }
-export type ExtendedCssBuilder<T extends CssClasses> = CssBuilder & {[K in keyof T] : ExtendedCssBuilder<T>}
 
+cls('toto', {
+  borderTop: '15em'
+}).first({
+  borderTop: 0
+})
+cls('zobi', {
+  marginRight: '3em'
+})
 
-export class CssBuilder {
+conclude()
+console.log(getCurrentStyles())
 
-  // class names cache
-  static cache = {} as {[name: string]: string}
-
-  constructor(
-    public path: string[] = [],
-    public props: CSSPropertiesWithDefaults = {},
-    public cbks: Function[] = []
-  ) { }
-
-  static from<T extends CssClasses, B extends CssBuilder>(
-    this: new (base: string[], props?: CSSPropertiesWithDefaults) => B,
-    base: string,
-    desc: T,
-    props: CSSPropertiesWithDefaults = {}
-  ): ExtendedCssBuilder<T> {
-    // const Base
-    class ExtendedCssBuild extends (this as any) { }
-
-    for (let p in desc) {
-      const pr = (desc as any)[p]
-      Object.defineProperty(ExtendedCssBuild.prototype, p, {
-        get() {
-          if (typeof pr === 'function')
-            return new this.constructor([...this.path, p], this.props, [...this.cbks, pr])
-          return new this.constructor([...this.path, p], Object.assign({}, this.props, pr), this.cbks)
-        }
-      })
-    }
-
-    var n = new (ExtendedCssBuild as any)([base], props)
-    return n
-  }
-
-  more<U extends CssClasses, T extends CssClasses>(this: ExtendedCssBuilder<U>, desc: T): ExtendedCssBuilder<T & U>
-  more<T extends CssClasses>(desc: T): ExtendedCssBuilder<T>
-  more<T extends CssClasses>(desc: T): ExtendedCssBuilder<T>  {
-    return (this.constructor as any).from(this.path[0], desc, this.props, this.cbks)
-  }
-
-  get name() {
-    return [this.path[0], ...this.path.slice(1).sort()].join('__')
-  }
-
-  protected _dict: {[name: string]: string} = {}
-
-  getProps(props: CSSProperties) {
-    var res = {} as CSSProperties
-    const dct = this._dict
-    for (var x in props) {
-      const p = (props as any)[x] as string
-      var not_found = false
-      var val = typeof p !== 'string' ? p : p.replace(/\$\w+/g, m => {
-        not_found = not_found || !dct[m]
-        return dct[m]
-      })
-      if (!not_found) {
-        (res as any)[x] = val
-      }
-    }
-    return res
-  }
-
-  toString() {
-    const name = this.name
-    const c = CssBuilder.cache
-    const prev = c[name]
-    if (prev) return prev
-
-    var rest: CSSProperties = {}
-    var dct: {[name :string]: string} = this._dict
-    for (var x in this.props) {
-      if (x[0] === '$') {
-        dct[x] = (this.props as any)[x]
-      } else {
-        (rest as any)[x] = (this.props as any)[x]
-      }
-    }
-
-    var res = cls(name, this.getProps(rest))
-    c[name] = res
-
-    for (var _ of this.cbks) {
-      _.call(this, res)
-    }
-
-    return res
-  }
-}
-
-
-// border
-//    - 1px solid tint
-//    .width
-//       .px4
-//    - 4px solid tint
-//    .dashed
-//    - 4px dashed tint
-//    .color('#999999')
-
-
-// I want to do stuff like
-// border.width.px1.round.pct50
-//    -- defaults for color
-// border.width.px1.tint50.round
-// border.width('15px').color('#9493')
-// if there are defaults, then it should offer to come back to the regular builder.
-// if not, then it just offers to keep building with the attributes
-
-// What if there is a context :
-// border.top.width.px2.tint50.bottom.width.px4.tint50
-// position.absolute.top.left('-50%')
-
-// flex.gap : sizes + the rest -> always asks or is normal ?
-// gap is thus a builder ?
-// flex alone is a column with normal gap ?
-
-// export function color(col: string) {
-//   return { backgroundColor: col }
-// }
-
-// //
-// @memoize
-// export function gap(width: string) {
-//   var res = cls('gap-${width}')
-//   s`*`.childOf(res, {
-
-//   })
-//   return res
-// }
-
-
-export class ComplexCssBuilder {
-
-  static create() {
-
-  }
-
-  extend() {
-
-  }
-
-}
+// import * as _h from './helpers'
+// export const helpers = _h

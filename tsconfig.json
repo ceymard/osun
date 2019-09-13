@@ -6,12 +6,12 @@
         "declaration": true,
         "inlineSourceMap": true,
         "experimentalDecorators": true,
-        "importHelpers": true,
         "strict": true,
         "noUnusedLocals": true,
         "rootDir": "./src",
         "outDir": "./lib",
-        "lib": ["es6", "dom"]
+        "lib": ["es6", "dom"],
+        "types": []
     }
 }
 
