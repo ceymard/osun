@@ -1,6 +1,6 @@
 
 import { PropertiesFallback } from 'csstype'
-import { cls, s, MakeBuilder, Builder } from './osun'
+import { MakeBuilder, rule } from './osun'
 export type CSSProperties = PropertiesFallback
 
 
@@ -15,7 +15,7 @@ function maybepx(prop: string) {
 const _flexjust = (val: CSSProperties['justifyContent']) => { return { justifyContent: val } }
 const _flexalign = (val: CSSProperties['alignItems']) => { return { alignItems: val } }
 
-export const flex = MakeBuilder({
+export const flex = MakeBuilder('flex', {
   row: { display: 'flex', flexDirection: 'row' },
   column: { display: 'flex', flexDirection: 'column' },
   inline: { display: 'inline-flex' },
@@ -42,7 +42,7 @@ export const flex = MakeBuilder({
   gap(size: string) {
     // FIXME : should probably check for presence of wrap, reverse, row or column
 
-    this.children('*', {
+    rule`.${this.last()} > *`({
       marginTop: `${size}`,
       marginLeft: `${size}`
     })
@@ -56,22 +56,15 @@ export const flex = MakeBuilder({
     }
   },
 
-  /**
-   * Apply a style on hover.
-   */
-  hover(cbk: () => CSSProperties | Builder<any>) {
-    // get the class to be applied
-    const res = cbk()
-  }
 })
 
 
-export const grid = MakeBuilder({
+export const grid = MakeBuilder('grid', {
 
 })
 
 
-export const text = MakeBuilder({
+export const text = MakeBuilder('text', {
   color(col: string) { return { color: col } },
   bold: { fontWeight: 'bold' },
   italic: { fontStyle: 'italic' },
@@ -92,10 +85,11 @@ export const text = MakeBuilder({
   size(size: string) { return { fontSize: size } }
 })
 
+
 const _pos = (k: CSSProperties['position']) => { return { position: k } as CSSProperties }
 const _curs = (s: string) => { return {cursor: s} as CSSProperties }
 
-export const box = MakeBuilder({
+export const box = MakeBuilder('box', {
   background(bg: CSSProperties['background']) { return { background: bg } },
 
   positionAbsolute: _pos('absolute'),
@@ -149,19 +143,19 @@ export const box = MakeBuilder({
   paddingNone: { padding: '0' },
 
   // Border
-  borderTop(color: string, width: string = '1px', style: CSSProperties['borderStyle'] = 'solid') {
+  borderTop(color: string, width: string = '1px', style: CSSProperties['borderTopStyle'] = 'solid') {
     return { borderTopStyle: style, borderTopColor: color, borderTopWidth: width
   } },
-  borderBottom(color: string, width: string = '1px', style: CSSProperties['borderStyle'] = 'solid') {
+  borderBottom(color: string, width: string = '1px', style: CSSProperties['borderBottomStyle'] = 'solid') {
     return { borderBottomStyle: style, borderBottomColor: color, borderBottomWidth: width
   } },
-  borderLeft(color: string, width: string = '1px', style: CSSProperties['borderStyle'] = 'solid') {
+  borderLeft(color: string, width: string = '1px', style: CSSProperties['borderLeftStyle'] = 'solid') {
     return { borderLeftStyle: style, borderLeftColor: color, borderLeftWidth: width
   } },
-  borderRight(color: string, width: string = '1px', style: CSSProperties['borderStyle'] = 'solid') {
+  borderRight(color: string, width: string = '1px', style: CSSProperties['borderRightStyle'] = 'solid') {
     return { borderRightStyle: style, borderRightColor: color, borderRightWidth: width
   } },
-  borderVertical(color: string, width: string = '1px', style: CSSProperties['borderStyle'] = 'solid') { return {
+  borderVertical(color: string, width: string = '1px', style: CSSProperties['borderTopStyle'] = 'solid') { return {
     borderTopStyle: style,
     borderTopColor: color,
     borderTopWidth: width,
@@ -169,7 +163,7 @@ export const box = MakeBuilder({
     borderBottomColor: color,
     borderBottomWidth: width
   } },
-  borderHorizontal(color: string, width: string = '1px', style: CSSProperties['borderStyle'] = 'solid') { return {
+  borderHorizontal(color: string, width: string = '1px', style: CSSProperties['borderLeftStyle'] = 'solid') { return {
     borderLeftStyle: style,
     borderLeftColor: color,
     borderLeftWidth: width,

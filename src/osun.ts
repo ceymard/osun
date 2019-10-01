@@ -5,32 +5,63 @@
 import * as CSS from 'csstype'
 export type CSSProperties = CSS.PropertiesFallback
 
-export class BaseBuilder {
-  path: string[] = []
-  props: CSSProperties[] = []
-
-  /**
-   * Builder can be used as a class too !
-   */
-  className() {
-    const name = this.path.join('-')
-    rule`.${name}`(...this.props)
-    return name
-  }
-
-}
 
 export type ChangeReturnType<F extends Function, NewR> = F extends (...a: infer A) => any ? (...a: A) => NewR : never
 
-export type Builder<T> = BaseBuilder
+export type Builder<T> = string & CssClass
   & {[K in keyof T]:
       T[K] extends Function ?
         ChangeReturnType<T[K], Builder<T>>
         : Builder<T>
     }
 
-export function MakeBuilder<T>(props: {[name in keyof T]: CSSProperties | ((this: CssClass, ...a: any[]) => CSSProperties)}): Builder<T> {
-  return null!
+export function MakeBuilder<T extends {[name: string]: CSSProperties | ((this: CssClass, ...args: any[]) => CSSProperties | undefined)}>(base: string, obj: T): Builder<T> {
+  class BuilderCssClass extends CssClass { }
+
+  const proto = BuilderCssClass.prototype
+
+  var cache = {} as {[name: string]: {props: CSSProperties, name: string}}
+
+  for (let key in obj) {
+    let value = obj[key]
+    if (typeof value === 'function') {
+      Object.defineProperty(proto, key, {
+        get() {
+          return function (this: BuilderCssClass) {
+            var args = Array.from(arguments)
+            var realkey = key + '_' + args.join('_')
+            var cached = cache[realkey]
+            if (!cached) {
+              var name = clsname(base + '_' + realkey)
+              var res = new BuilderCssClass([...this.names, name], [...this.props])
+              var props = (value as Function).apply(res, args)
+              if (props) {
+                rule`${'.' + name}`(props)
+                res.props.push(props)
+              }
+              cached = cache[realkey] = {name, props}
+              return res
+            }
+            return new BuilderCssClass([...this.names, cached.name], [...this.props, cached.props])
+          }
+        }
+      })
+    } else {
+      Object.defineProperty(proto, key, {
+        get(this: BuilderCssClass) {
+          var cached = cache[key]
+          if (!cached) {
+            var name = clsname(base + '_' + key)
+            rule`${'.' + name}`(value as CSSProperties)
+            cached = cache[key] = {name, props: value as CSSProperties}
+          }
+
+          return new BuilderCssClass([...this.names, cached.name], [...this.props, cached.props])
+        }
+      })
+    }
+  }
+  return new BuilderCssClass([], []) as Builder<T>
 }
 
 export type CssBuild = CSSProperties | Builder<{}>
@@ -45,11 +76,17 @@ var raf_value: number | null = null
  */
 function createStyleNode() {
   if (sheet.length === 0) return
-  var s = document.createElement('style')
-  s.setAttribute('data-style', clsname('typecss'))
-  s.textContent = getCurrentStyles()
-  document.head.appendChild(s)
-  raf_value = null
+  conclude()
+  if (typeof window !== 'undefined') {
+    var s = document.createElement('style')
+    s.setAttribute('data-style', clsname('typecss'))
+    s.textContent = getCurrentStyles()
+    document.head.appendChild(s)
+    raf_value = null
+  } else {
+    // we're in node.js
+    console.log(getCurrentStyles())
+  }
 }
 
 
@@ -76,24 +113,58 @@ const re_prop = /([A-Z]|^([wW]ebkit|[mM]oz|[mM]s))/g
 
 
 var _last_selector = ''
-export function rule(arr: TemplateStringsArray, ...values: (CssClass | string)[]) {
-  const sel = arr.map((str, i) => `${str}${values[i] ? values[i].toString() : ''}`).join('')
 
-  if (!_last_selector || _last_selector !== sel) {
-    conclude()
-    _last_selector = sel
+export function rule(arr: string[], ...values: (CssClass | string)[]): (...props: (CSSProperties | CssClass)[]) => void;
+export function rule(arr: TemplateStringsArray, ...values: (CssClass | string)[]): (...props: (CSSProperties | CssClass)[]) => void;
+export function rule(arr: any, ...values: (CssClass | string)[]) {
+
+  // build the array with all the possibilities.
+  const choices = [] as string[][]
+  for (var i = 0; i < arr.length; i++) {
+    if (arr[i]) choices.push([arr[i]])
+    if (values[i]) {
+      var val = values[i]
+      var current_selector = typeof val === 'string' ? val : val.selector()
+      var possibilites = current_selector.split(/,/g).map(s => s.trim()).filter(s => !!s)
+      choices.push(possibilites)
+    }
   }
 
-  return function (...props: CSSProperties[]) {
+  const selectors = [] as string[]
+  function cartesian(arr: string[], idx: number) {
+    var len = choices[idx].length;
+    for (var i = 0; i < len; i++) {
+      var a = arr.slice(0) // clone it
+      a.push(choices[idx][i])
+      if (idx === choices.length - 1)
+        selectors.push(a.join(''))
+      else
+        cartesian(a, idx + 1)
+    }
+  }
+  cartesian([], 0)
+
+  const sel = selectors.join(',')
+
+  function export_props(p: CSSProperties) {
+    for (var pname in p) {
+      const values = (p as any)[pname]
+      for (var value of Array.isArray(values) ? values : [values]) {
+        const n = pname.replace(re_prop, p => '-' + p.toLowerCase())
+        sheet.push(`${n}:${value.toString()};`)
+      }
+    }
+  }
+
+  return function (...props: (CSSProperties | CssClass)[]) {
+    conclude()
+    _last_selector = sel
     sheet.push(`${sel}{`) // will be closed by conclude()
     for (var p of props) {
-      for (var pname in p) {
-        const values = (p as any)[pname]
-        for (var value of Array.isArray(values) ? values : [values]) {
-          const n = pname.replace(re_prop, p => '-' + p.toLowerCase())
-          sheet.push(`${n}:${value.toString()};`)
-        }
-      }
+      if (p instanceof CssClass)
+        for (var p2 of p.props) export_props(p2)
+      else
+        export_props(p)
     }
 
     if (raf_value === null) {
@@ -132,78 +203,48 @@ export function clsname(name: string) {
  *    that can possibly have been generated previously using cls()
  * @returns a string usable in `class` / `className`
  */
-export function cls(name: string, ...props_or_classes: (CssClass | CSSProperties | string | Builder<{}>)[]): CssClass {
-  var names = [clsname(name)]
+export function cls(name: string, ...props_or_classes: (CssClass | CSSProperties | string)[]): CssClass & string {
+  var name = clsname(name)
+  var names = [name] as string[]
   var props: CSSProperties[] = []
 
   for (var component of props_or_classes) {
     if (typeof component === 'string') {
-      // This is a CSS class
       names.push(component)
     } else if (component instanceof CssClass) {
-      names = [...names, ...component.classes]
-    } else if (component instanceof BaseBuilder) {
-      props = [...props, ...component.props]
+      names = [...names, ...component.names]
     } else {
       props.push(component)
     }
   }
 
   // Now, push the properties onto the first classname
-  rule`.${names[0]}`(...props)
-  return new CssClass(names)
+  if (props.length > 0) {
+    var n = `.${name}`
+    rule`${n}`(...props)
+  }
+  return new CssClass(names, props) as CssClass & string
 }
 
 
 export class CssClass {
 
-  constructor(public classes: string[]) {
+  constructor(
+    public names: string[],
+    public props: CSSProperties[]
+  ) {
 
   }
 
-  className() { return this.classes }
-  toString() { return this.classes.map(c => `.${c}`).join('') }
+  get length() { return this.toString().length }
 
-  first(...props: CSSProperties[]) {
-    rule`${this}:first-child`(...props)
-    return this
-  }
+  selector() { return `.${this.names[0]}` }
 
-  firstIn(...props: CssBuild[]) {
-    return this
-  }
+  last() { return this.names[this.names.length - 1] }
 
-  last(...props: CssBuild[]) {
-    return this
-  }
-
-  nth(n: string | number, ...props: CssBuild[]) {
-    return this
-  }
-
-  nthIn(n: string | number, ...props: CssBuild[]) {
-
-    return this
-  }
-
-  firstChild(...props: CssBuild[]): this {
-    return this
-  }
-
-  lastChild(...props: CssBuild[]): this {
-    return this
-  }
-
-  hover(...props: CssBuild[]): this {
-    return this
-  }
-
-  and(other: string | CssClass, ...props: CssBuild[]): this {
-    return this
-  }
-
-  placeholder(...props: CssBuild[]) {
-    return this
+  toString() { return this.names.join(' ') }
+  valueOf() {
+    return this.toString()
   }
 
 }
@@ -267,19 +308,3 @@ export function raw(css: string) {
   conclude()
   sheet.push(css)
 }
-
-
-cls('toto', {
-  borderTop: '15em'
-}).first({
-  borderTop: 0
-})
-cls('zobi', {
-  marginRight: '3em'
-})
-
-conclude()
-console.log(getCurrentStyles())
-
-// import * as _h from './helpers'
-// export const helpers = _h
