@@ -15,7 +15,7 @@ export type Builder<T> = string & CssClass
         : Builder<T>
     }
 
-export function MakeBuilder<T extends {[name: string]: CSSProperties | ((this: CssClass, ...args: any[]) => CSSProperties | undefined)}>(base: string, obj: T): Builder<T> {
+export function MakeBuilder<T extends {[name: string]: CSSProperties | ((this: CssClass, ...args: any[]) => CSSProperties | void)}>(base: string, obj: T): Builder<T> {
   class BuilderCssClass extends CssClass { }
 
   const proto = BuilderCssClass.prototype
@@ -29,10 +29,10 @@ export function MakeBuilder<T extends {[name: string]: CSSProperties | ((this: C
         get() {
           return function (this: BuilderCssClass) {
             var args = Array.from(arguments)
-            var realkey = key + '_' + args.join('_')
+            var realkey = key + '_' + args.map(a => a.toString().replace(/\s+|\(|\)|\.|\-|<|>|,|~|\+|:|\[|\]/g, '')).join('_')
             var cached = cache[realkey]
             if (!cached) {
-              var name = clsname(base + '_' + realkey)
+              var name = clsname(base + '-' + realkey)
               var res = new BuilderCssClass([...this.names, name], [...this.props])
               var props = (value as Function).apply(res, args)
               if (props) {
@@ -47,15 +47,14 @@ export function MakeBuilder<T extends {[name: string]: CSSProperties | ((this: C
         }
       })
     } else {
+      // pre-create all classes.
+      var name = clsname(base + '_' + key)
+      cache[key] = {name, props: value as CSSProperties}
+      rule`${'.' + name}`(value as CSSProperties)
+
       Object.defineProperty(proto, key, {
         get(this: BuilderCssClass) {
           var cached = cache[key]
-          if (!cached) {
-            var name = clsname(base + '_' + key)
-            rule`${'.' + name}`(value as CSSProperties)
-            cached = cache[key] = {name, props: value as CSSProperties}
-          }
-
           return new BuilderCssClass([...this.names, cached.name], [...this.props, cached.props])
         }
       })
@@ -179,7 +178,8 @@ export function rule(arr: any, ...values: (CssClass | string)[]) {
 
 const floor = Math.floor
 declare var require: (s: 'perf_hooks') => {performance: typeof window.performance}
-const now = typeof window !== 'undefined' ? performance.now : require('perf_hooks').performance.now
+const perf_hooks = 'perf_hooks'
+const now = typeof window !== 'undefined' ? () => performance.now() : require(perf_hooks).performance.now
 const start = floor(now() * 1000)
 const raf = typeof window !== 'undefined' ? window.requestAnimationFrame : setTimeout
 /**
@@ -203,7 +203,7 @@ export function clsname(name: string) {
  *    that can possibly have been generated previously using cls()
  * @returns a string usable in `class` / `className`
  */
-export function cls(name: string, ...props_or_classes: (CssClass | CSSProperties | string)[]): CssClass & string {
+export function style(name: string, ...props_or_classes: (CssClass | CSSProperties | string)[]): CssClass & string {
   var name = clsname(name)
   var names = [name] as string[]
   var props: CSSProperties[] = []
@@ -251,6 +251,7 @@ export class CssClass {
 
 
 function scoped(str: string, fn: () => void) {
+  conclude()
   sheet.push(`${str} {`)
   fn()
   conclude()

@@ -1,6 +1,6 @@
 
 import { PropertiesFallback } from 'csstype'
-import { MakeBuilder, rule } from './osun'
+import { MakeBuilder, rule, CssClass } from './osun'
 export type CSSProperties = PropertiesFallback
 
 
@@ -10,6 +10,10 @@ function maybepx(prop: string) {
   return function (px: string | number) {
     return {[prop]: typeof px === 'number' ? `${px}px` : px} as CSSProperties
   }
+}
+
+function px(px: string | number) {
+  return typeof px === 'number' ? `${px}px` : px
 }
 
 const _flexjust = (val: CSSProperties['justifyContent']) => { return { justifyContent: val } }
@@ -39,20 +43,20 @@ export const flex = MakeBuilder('flex', {
   alignBaseline: _flexalign('baseline'),
   alignFirstBaseline: _flexalign('first baseline'),
   alignLastBaseline: _flexalign('last baseline'),
-  gap(size: string) {
+  gap(size: string | number) {
     // FIXME : should probably check for presence of wrap, reverse, row or column
 
     rule`.${this.last()} > *`({
-      marginTop: `${size}`,
-      marginLeft: `${size}`
+      marginTop: px(size),
+      marginLeft: px(size)
     })
 
     return {
       position: 'relative',
-      top: `-${size}`,
-      left: `-${size}`,
-      marginBottom: `-${size}`,
-      marginRight: `-${size}`,
+      top: `-${px(size)}`,
+      left: `-${px(size)}`,
+      marginBottom: `-${px(size)}`,
+      marginRight: `-${px(size)}`,
     }
   },
 
@@ -92,10 +96,10 @@ const _curs = (s: string) => { return {cursor: s} as CSSProperties }
 export const box = MakeBuilder('box', {
   background(bg: CSSProperties['background']) { return { background: bg } },
 
-  positionAbsolute: _pos('absolute'),
-  positionRelative: _pos('relative'),
-  positionStatic: _pos('static'),
-  positionFixed: _pos('fixed'),
+  positionAbsolute: _pos('absolute !important' as any),
+  positionRelative: _pos('relative !important' as any),
+  positionStatic: _pos('static !important' as any),
+  positionFixed: _pos('fixed !important' as any),
   positionSticky: _pos(['-webkit-sticky', 'sticky']),
   top(n: string | number) { return { top: typeof n === 'number' ? `${n}px` : n } },
   bottom(n: string | number) { return { top: typeof n === 'number' ? `${n}px` : n } },
@@ -123,23 +127,23 @@ export const box = MakeBuilder('box', {
   width: maybepx('width'),
 
   // Margins
-  margin(size: string) { return { margin: size } },
-  marginTop(size: string) { return { marginTop: size } },
-  marginBottom(size: string) { return { marginBottom: size } },
-  marginLeft(size: string) { return { marginLeft: size } },
-  marginRight(size: string) { return { marginRight: size } },
-  marginVertical(size: string) { return { marginTop: size, marginLeft: size } },
-  marginHorizontal(size: string) { return { marginLeft: size, marginRight: size } },
+  margin(size: string | number) { return { margin: px(size) } },
+  marginTop(size: string | number) { return { marginTop: px(size) } },
+  marginBottom(size: string | number) { return { marginBottom: px(size) } },
+  marginLeft(size: string | number) { return { marginLeft: px(size) } },
+  marginRight(size: string | number) { return { marginRight: px(size) } },
+  marginVertical(size: string | number) { return { marginTop: px(size), marginLeft: px(size) } },
+  marginHorizontal(size: string | number) { return { marginLeft: px(size), marginRight: px(size) } },
   marginNone: { margin: '0' },
 
   // Paddings
-  padding(size: string) { return { padding: size } },
-  paddingTop(size: string) { return { paddingTop: size } },
-  paddingBottom(size: string) { return { paddingBottom: size } },
-  paddingLeft(size: string) { return { paddingLeft: size } },
-  paddingRight(size: string) { return { paddingRight: size } },
-  paddingVertical(size: string) { return { paddingTop: size, paddingLeft: size } },
-  paddingHorizontal(size: string) { return { paddingLeft: size, paddingRight: size } },
+  padding(size: string | number) { return { padding: px(size) } },
+  paddingTop(size: string | number) { return { paddingTop: px(size) } },
+  paddingBottom(size: string | number) { return { paddingBottom: px(size) } },
+  paddingLeft(size: string | number) { return { paddingLeft: px(size) } },
+  paddingRight(size: string | number) { return { paddingRight: px(size) } },
+  paddingVertical(size: string | number) { return { paddingTop: px(size), paddingLeft: px(size) } },
+  paddingHorizontal(size: string | number) { return { paddingLeft: px(size), paddingRight: px(size) } },
   paddingNone: { padding: '0' },
 
   // Border
@@ -171,7 +175,7 @@ export const box = MakeBuilder('box', {
     borderRightColor: color,
     borderRightWidth: width
   } },
-  borderAll(color: string, width: string = '1px', style: CSSProperties['borderStyle'] = 'solid') { return { borderStyle: style, borderColor: color, borderWidth: width } },
+  border(color: string, width: string = '1px', style: CSSProperties['borderStyle'] = 'solid') { return { borderStyle: style, borderColor: color, borderWidth: width } },
   borderCircle: { borderRadius: '50%' },
   borderRound: { borderRadius: `2px` },
   borderRadius(rad: CSSProperties['borderRadius']) { return { borderRadius: rad } },
@@ -196,5 +200,22 @@ export const box = MakeBuilder('box', {
     left: 0,
     top: 0,
     transformOrigin: '50% 50%'
+  },
+
+  hover(...props: (CSSProperties|CssClass)[]) {
+    var pr = [] as CSSProperties[]
+    for (var p of props)
+      if (p instanceof CssClass)
+        pr = [...pr, ...p.props]
+      else
+        pr.push(p)
+    rule `${'.' + this.last()}:hover`(...pr)
   }
 })
+
+
+flex.absoluteGrow(1)
+flex.absoluteGrow(2)
+flex.absoluteGrow(3)
+flex.absoluteGrow(4)
+flex.absoluteGrow(5)
