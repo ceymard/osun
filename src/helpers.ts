@@ -43,6 +43,36 @@ export const flex = MakeBuilder('flex', {
   alignBaseline: _flexalign('baseline'),
   alignFirstBaseline: _flexalign('first baseline'),
   alignLastBaseline: _flexalign('last baseline'),
+  gappedRow(size: string | number) {
+
+    rule`.${this.last()} > *`({
+      marginLeft: px(size)
+    })
+
+    rule`.${this.last()} > *:first-child`({
+      marginLeft: 0
+    })
+
+    return {
+      display: 'flex',
+      flexDirection: 'row',
+    }
+  },
+  gappedColumn(size: string | number) {
+
+    rule`.${this.last()} > *`({
+      marginTop: px(size)
+    })
+
+    rule`.${this.last()} > *:first-child`({
+      marginTop: 0
+    })
+
+    return {
+      display: 'flex',
+      flexDirection: 'column',
+    }
+  },
   gap(size: string | number) {
     // FIXME : should probably check for presence of wrap, reverse, row or column
 
