@@ -56,7 +56,7 @@ export const flex = MakeBuilder('flex', {
     return {
       display: 'flex',
       flexDirection: 'row',
-    }
+    } as CSSProperties
   },
   gappedColumn(size: string | number) {
 
@@ -71,25 +71,8 @@ export const flex = MakeBuilder('flex', {
     return {
       display: 'flex',
       flexDirection: 'column',
-    }
+    } as CSSProperties
   },
-  gap(size: string | number) {
-    // FIXME : should probably check for presence of wrap, reverse, row or column
-
-    rule`.${this.last()} > *`({
-      marginTop: px(size),
-      marginLeft: px(size)
-    })
-
-    return {
-      position: 'relative',
-      top: `-${px(size)}`,
-      left: `-${px(size)}`,
-      marginBottom: `-${px(size)}`,
-      marginRight: `-${px(size)}`,
-    }
-  },
-
 })
 
 
