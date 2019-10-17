@@ -309,3 +309,9 @@ export function raw(css: string) {
   conclude()
   sheet.push(css)
 }
+
+
+export function CssNamespace<T>(t: T, rulefn?: (t: T) => void): T {
+  if (rulefn) rulefn(t)
+  return t
+}
