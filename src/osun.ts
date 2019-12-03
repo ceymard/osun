@@ -31,7 +31,7 @@ export function MakeBuilder<T extends {[name: string]: CSSProperties | ((this: C
         get() {
           return function (this: BuilderCssClass) {
             var args = Array.from(arguments)
-            var realkey = key + '_' + args.map(a => a.toString().replace(/\s+|\(|\)|\.|\-|<|>|,|~|\+|:|\[|\]/g, '')).join('_')
+            var realkey = key + '_' + args.map(a => a.toString().replace(/\s+|\(|\)|\.|\-|<|>|,|~|\+|:|\[|\]|#/g, '')).join('_')
             var cached = cache[realkey]
             if (!cached) {
               var name = clsname(base + '-' + realkey)
