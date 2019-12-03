@@ -73,6 +73,21 @@ export const flex = MakeBuilder('flex', {
       flexDirection: 'column',
     } as CSSProperties
   },
+  gapped(vertical: string | number, horizontal?: string | number) {
+    var horiz = horizontal ?? vertical
+    rule`.${this.last()} > *`({
+      marginTop: px(vertical),
+      marginLeft: px(horiz)
+    })
+    return {
+      position: 'relative',
+      top: px(-vertical),
+      left: px(-horiz),
+      marginBottom: px(-vertical),
+      marginRight: px(-horiz),
+      // display: 'flex',
+    }
+  }
 })
 
 
@@ -83,7 +98,7 @@ export const grid = MakeBuilder('grid', {
 
 export const text = MakeBuilder('text', {
   color(col: string) { return { color: col } },
-  bold: { fontWeight: 'bold' },
+  bold: { fontWeight: 'bolder' },
   italic: { fontStyle: 'italic' },
   underline: { textDecoration: 'underline' },
   uppercase: {textTransform: 'uppercase'},
@@ -151,6 +166,7 @@ export const box = MakeBuilder('box', {
 
   // Paddings
   padding(size: string | number) { return { padding: px(size) } },
+  paddingSquashed(size: number) { return { padding: `${size / 1.512}px ${size}px` } },
   paddingTop(size: string | number) { return { paddingTop: px(size) } },
   paddingBottom(size: string | number) { return { paddingBottom: px(size) } },
   paddingLeft(size: string | number) { return { paddingLeft: px(size) } },

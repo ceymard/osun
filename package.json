@@ -4,8 +4,8 @@
   "main": "./lib/osun.js",
   "types": "./lib/osun.d.ts",
   "scripts": {
-    "build": "wtsc",
-    "watch": "wtsc -w"
+    "build": "tsc | wtsc",
+    "watch": "tsc -w --preserveWatchOutput | wtsc"
   },
   "dependencies": {
     "csstype": "^2.6.5"

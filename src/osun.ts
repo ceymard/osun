@@ -22,7 +22,9 @@ export function MakeBuilder<T extends {[name: string]: CSSProperties | ((this: C
 
   var cache = {} as {[name: string]: {props: CSSProperties, name: string}}
 
-  for (let key in obj) {
+  const keys = Object.keys(obj)
+  for (var i = 0, l = keys.length; i < l; i++) {
+    let key = keys[i]
     let value = obj[key]
     if (typeof value === 'function') {
       Object.defineProperty(proto, key, {
@@ -146,7 +148,8 @@ export function rule(arr: any, ...values: (CssClass | string)[]) {
   const sel = selectors.join(',')
 
   function export_props(p: CSSProperties) {
-    for (var pname in p) {
+    for (var i = 0, props = Object.keys(p), l = props.length; i < l; i++) {
+      var pname = props[i]
       const values = (p as any)[pname]
       for (var value of Array.isArray(values) ? values : [values]) {
         const n = pname.replace(re_prop, p => '-' + p.toLowerCase())
@@ -272,7 +275,8 @@ export function keyframes(name: string, keyframes: {[name: string]: CSSPropertie
   name = clsname(name)
 
   scoped(`@keyframes ${name}`, () => {
-    for (var prop in keyframes) {
+    for (var i = 0, props = Object.keys(keyframes), l = props.length; i < l; i++) {
+      var prop = props[i]
       rule`${prop}`(keyframes[prop])
     }
   })
