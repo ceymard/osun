@@ -6,68 +6,6 @@ import * as CSS from 'csstype'
 export type CSSProperties = CSS.PropertiesFallback
 
 
-export type ChangeReturnType<F extends Function, NewR> = F extends (...a: infer A) => any ? (...a: A) => NewR : never
-
-export type Builder<T> = string & CssClass
-  & {[K in keyof T]:
-      T[K] extends Function ?
-        ChangeReturnType<T[K], Builder<T>>
-        : Builder<T>
-    }
-
-export function MakeBuilder<T extends {[name: string]: CSSProperties | ((this: CssClass, ...args: any[]) => CSSProperties | void)}>(base: string, obj: T): Builder<T> {
-  class BuilderCssClass extends CssClass { }
-
-  const proto = BuilderCssClass.prototype
-
-  var cache = {} as {[name: string]: {props: CSSProperties, name: string}}
-
-  const keys = Object.keys(obj)
-  for (var i = 0, l = keys.length; i < l; i++) {
-    let key = keys[i]
-    let value = obj[key]
-    if (typeof value === 'function') {
-      Object.defineProperty(proto, key, {
-        get() {
-          return function (this: BuilderCssClass) {
-            var args = Array.from(arguments)
-            var realkey = key + '_' + args.map(a => a.toString().replace(/\s+|\(|\)|\.|\-|<|>|,|~|\+|:|\[|\]|#/g, '')).join('_')
-            var cached = cache[realkey]
-            if (!cached) {
-              var name = clsname(base + '-' + realkey)
-              var res = new BuilderCssClass([...this.names, name], [...this.props])
-              var props = (value as Function).apply(res, args)
-              if (props) {
-                rule`${'.' + name}`(props)
-                res.props.push(props)
-              }
-              cached = cache[realkey] = {name, props}
-              return res
-            }
-            return new BuilderCssClass([...this.names, cached.name], [...this.props, cached.props])
-          }
-        }
-      })
-    } else {
-      // pre-create all classes.
-      var name = clsname(base + '_' + key)
-      cache[key] = {name, props: value as CSSProperties}
-      rule`${'.' + name}`(value as CSSProperties)
-
-      Object.defineProperty(proto, key, {
-        get(this: BuilderCssClass) {
-          var cached = cache[key]
-          return new BuilderCssClass([...this.names, cached.name], [...this.props, cached.props])
-        }
-      })
-    }
-  }
-  return new BuilderCssClass([], []) as Builder<T>
-}
-
-export type CssBuild = CSSProperties | Builder<{}>
-
-
 var sheet: string[] = []
 var raf_value: number | null = null
 
@@ -242,8 +180,6 @@ export class CssClass {
   get length() { return this.toString().length }
 
   selector() { return `.${this.names[0]}` }
-
-  last() { return this.names[this.names.length - 1] }
 
   toString() { return this.names.join(' ') }
   valueOf() {
