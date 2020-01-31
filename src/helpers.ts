@@ -175,9 +175,9 @@ export class BoxBuilder extends Builder {
   get positionFixed() { return this._add('positionFixed', _pos('fixed !important' as any)) }
   get positionSticky() { return this._add('positionSticky', _pos(['-webkit-sticky', 'sticky'])) }
   top(n: string | number) { return this._add(`top${n}`, { top: px(n) }) }
-  bottom(n: string | number) { return this._add(`bottom${n}`, { top: px(n) }) }
-  left(n: string | number) { return this._add(`left${n}`, { top: px(n) }) }
-  right(n: string | number) { return this._add(`right${n}`, { top: px(n) }) }
+  bottom(n: string | number) { return this._add(`bottom${n}`, { bottom: px(n) }) }
+  left(n: string | number) { return this._add(`left${n}`, { left: px(n) }) }
+  right(n: string | number) { return this._add(`right${n}`, { right: px(n) }) }
 
   get block() { return this._add(`block`, { display: 'block' }) }
   get inlineBlock() { return this._add(`inlineBlock`, { display: 'inline-block' }) }
@@ -194,6 +194,12 @@ export class BoxBuilder extends Builder {
   get cursorZoomOut() { return this._add(`cursorZoomOut`, _curs('zoom-out')) }
   get eventsNone() { return this._add(`eventsNone`, { pointerEvents: 'none' }) }
   get eventsAuto() { return this._add(`eventsAuto`, { pointerEvents: 'auto' }) }
+
+  get overflowHidden() { return this._add(`overflow-hidden`, { overflow: 'hidden' }) }
+  get overflowYScroll() { return this._add(`overflow-y-scroll`, { overflowY: 'scroll' })}
+  get overflowXScroll() { return this._add(`overflow-y-scroll`, { overflowY: 'scroll' })}
+
+  translateZ(n: number) { return this._add(`translate-z-${n}`, { transform: 'translateZ(0)' })}
 
   height(size: number | string) { return this._add(`height${size}`, { height: px(size) }) }
   width(size: number | string) { return this._add(`width${size}`, { width: px(size) }) }
