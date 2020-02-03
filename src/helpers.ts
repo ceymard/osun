@@ -29,7 +29,7 @@ export class Builder extends CssClass {
 
   protected _cached(key: string, cbk?: (cls: string) => void) {
     const cons = this.constructor as {new(names: string[], props: CSSProperties[]): Builder}
-    key = key.replace(/\s+|\(|\)|\.|\-|<|>|,|~|\+|:|\[|\]|#/g, '-')
+    key = key.replace(/\s+|\(|\)|\.|\-|<|>|,|~|\+|%|:|\[|\]|#/g, '-')
 
     // Try to get the
     var cache = builder_cache.get(cons)
