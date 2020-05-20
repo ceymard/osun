@@ -101,9 +101,10 @@ export function rule(arr: any, ...values: (CssClass | string)[]) {
     _last_selector = sel
     sheet.push(`${sel}{`) // will be closed by conclude()
     for (var p of props) {
-      if (p instanceof CssClass)
-        for (var p2 of p.props) export_props(p2)
-      else
+      if (p instanceof CssClass) {
+        // console.log(p)
+        for (var p2 of p.all_props) export_props(p2)
+      } else
         export_props(p)
     }
 
@@ -147,13 +148,16 @@ export function clsname(name: string) {
 export function style(name: string, ...props_or_classes: (CssClass | CSSProperties | string)[]): CssClass & string {
   var name = clsname(name)
   var names = [name] as string[]
+  // we only track the props that we *need* to define here
   var props: CSSProperties[] = []
+  var parents: CssClass[] = []
 
   for (var component of props_or_classes) {
     if (typeof component === 'string') {
       names.push(component)
     } else if (component instanceof CssClass) {
       names = [...names, ...component.names]
+      parents.push(component)
     } else {
       props.push(component)
     }
@@ -164,7 +168,7 @@ export function style(name: string, ...props_or_classes: (CssClass | CSSProperti
     var n = `.${name}`
     rule`${n}`(...props)
   }
-  return new CssClass(names, props) as CssClass & string
+  return new CssClass(names, props, parents) as CssClass & string
 }
 
 
@@ -172,11 +176,13 @@ export class CssClass {
 
   constructor(
     public names: string[],
-    public props: CSSProperties[]
+    public props: CSSProperties[],
+    public parents: CssClass[] = []
   ) {
 
   }
 
+  get all_props(): CSSProperties[] { return [...this.props, ...this.parents.reduce((acc, item) => (acc.push(...item.all_props), acc), [] as CSSProperties[])] }
   get length() { return this.toString().length }
 
   selector() { return `.${this.names[0]}` }
