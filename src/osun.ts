@@ -53,17 +53,18 @@ const re_prop = /([A-Z]|^([wW]ebkit|[mM]oz|[mM]s))/g
 
 var _last_selector = ''
 
-export function rule(arr: string[], ...values: (CssClass | string)[]): (...props: (CSSProperties | CssClass)[]) => void;
-export function rule(arr: TemplateStringsArray, ...values: (CssClass | string)[]): (...props: (CSSProperties | CssClass)[]) => void;
-export function rule(arr: any, ...values: (CssClass | string)[]) {
+export function rule(arr: string[], ...values: (CssClass | string | (CssClass | string)[])[]): (...props: (CSSProperties | CssClass)[]) => void;
+export function rule(arr: TemplateStringsArray, ...values: (CssClass | string | (CssClass | string)[])[]): (...props: (CSSProperties | CssClass)[]) => void;
+export function rule(arr: any, ...values: (CssClass | string | (CssClass | string)[])[]) {
 
+  const get_str = (val: string | CssClass) => typeof val === 'string' ? val : val.selector()
   // build the array with all the possibilities.
   const choices = [] as string[][]
   for (var i = 0; i < arr.length; i++) {
     if (arr[i]) choices.push([arr[i]])
     if (values[i]) {
       var val = values[i]
-      var current_selector = typeof val === 'string' ? val : val.selector()
+      var current_selector = Array.isArray(val) ? val.map(get_str).join(', ') : get_str(val)
       var possibilites = current_selector.split(/,/g).map(s => s.trim()).filter(s => !!s)
       choices.push(possibilites)
     }
