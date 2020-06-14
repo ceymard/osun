@@ -146,30 +146,34 @@ export function clsname(name: string) {
  *    that can possibly have been generated previously using cls()
  * @returns a string usable in `class` / `className`
  */
-export function style(name: string, ...props_or_classes: (CssClass | CSSProperties | string)[]): CssClass & string {
+export function style(name: string, ...props_or_classes: (CssClass | CSSProperties | string | number)[]): CssClass & string {
   var name = clsname(name)
   var names = [name] as string[]
   // we only track the props that we *need* to define here
   var props: CSSProperties[] = []
   var parents: CssClass[] = []
 
+  var specificity = 1
   for (var component of props_or_classes) {
     if (typeof component === 'string') {
       names.push(component)
     } else if (component instanceof CssClass) {
       names = [...names, ...component.names]
       parents.push(component)
+    } else if (typeof component === 'number') {
+      specificity = component
     } else {
       props.push(component)
     }
   }
 
+  var res = new CssClass(names, props, parents, specificity) as CssClass & string
+
   // Now, push the properties onto the first classname
   if (props.length > 0) {
-    var n = `.${name}`
-    rule`${n}`(...props)
+    rule`${res.selector()}`(...props)
   }
-  return new CssClass(names, props, parents) as CssClass & string
+  return res
 }
 
 
@@ -178,7 +182,8 @@ export class CssClass {
   constructor(
     public names: string[],
     public props: CSSProperties[],
-    public parents: CssClass[] = []
+    public parents: CssClass[] = [],
+    public specificity = 1
   ) {
 
   }
@@ -186,7 +191,7 @@ export class CssClass {
   get all_props(): CSSProperties[] { return [...this.props, ...this.parents.reduce((acc, item) => (acc.push(...item.all_props), acc), [] as CSSProperties[])] }
   get length() { return this.toString().length }
 
-  selector() { return `.${this.names[0]}` }
+  selector() { return this.specificity === 1 ? `.${this.names[0]}` : new Array(this.specificity).fill(this.names[0]).map(n => `.${n}`).join('') }
 
   toString() { return this.names.join(' ') }
   valueOf() {
