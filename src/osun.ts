@@ -120,9 +120,8 @@ export function rule(arr: any, ...values: (CssClass | string | (CssClass | strin
 
 
 const floor = Math.floor
-declare var require: (s: 'perf_hooks') => {performance: typeof window.performance}
-const perf_hooks = 'perf_hooks'
-const now = typeof window !== 'undefined' ? () => performance.now() : require(perf_hooks).performance.now
+declare var perf_hooks: any
+const now = typeof window !== 'undefined' ? () => performance.now() : perf_hooks.performance.now as () => number
 const start = floor(now() * 1000)
 const raf = typeof window !== 'undefined' ? window.requestAnimationFrame : setTimeout
 /**
