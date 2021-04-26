@@ -169,10 +169,10 @@ export class BoxBuilder extends Builder {
 
   background(bg: CSSProperties['background']) { return this._add(`background${bg}`, { background: bg }) }
 
-  get positionAbsolute() { return this._add('positionAbsolute', _pos('absolute !important' as any)) }
-  get positionRelative() { return this._add('positionRelative', _pos('relative !important' as any)) }
-  get positionStatic() { return this._add('positionStatic', _pos('static !important' as any)) }
-  get positionFixed() { return this._add('positionFixed', _pos('fixed !important' as any)) }
+  get positionAbsolute() { return this._add('positionAbsolute', _pos('absolute' as any)) }
+  get positionRelative() { return this._add('positionRelative', _pos('relative' as any)) }
+  get positionStatic() { return this._add('positionStatic', _pos('static' as any)) }
+  get positionFixed() { return this._add('positionFixed', _pos('fixed' as any)) }
   get positionSticky() { return this._add('positionSticky', _pos(['-webkit-sticky', 'sticky'])) }
   top(n: string | number) { return this._add(`top${n}`, { top: px(n) }) }
   bottom(n: string | number) { return this._add(`bottom${n}`, { bottom: px(n) }) }
