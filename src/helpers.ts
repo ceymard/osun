@@ -1,5 +1,5 @@
 
-import { PropertiesFallback, JustifyContentProperty, AlignContentProperty } from 'csstype'
+import type { PropertiesFallback, Property } from 'csstype'
 import { clsname, rule, CssClass } from './osun'
 
 
@@ -83,11 +83,12 @@ export class FlexBuilder extends Builder {
 
 
   /// methods
+  gap(size: string | number) { return this._add("gap", { gap: px(size) }) }
   absoluteGrow(n: number) { return this._add('absolute-grow', { flexGrow: n, flexBasis: 0 }) }
   grow(n: number) { return this._add('grow', { flexGrow: n }) }
-  justify(val: JustifyContentProperty) { return this._add(`justify-${val}`, {justifyContent: val}) }
-  align(val: AlignContentProperty) { return this._add(`align-${val}`, {justifyContent: val}) }
+  justify(val: Property.JustifyContent) { return this._add(`justify-${val}`, {justifyContent: val}) }
 
+  /** @deprecated use .gap() */
   gappedRow(size: string | number) {
     return this._add(`gappedRow${size}`, {
       display: 'flex',
@@ -103,6 +104,7 @@ export class FlexBuilder extends Builder {
     })
   }
 
+  /** @deprecated use .gap() */
   gappedColumn(size: string | number) {
     return this._add(`gappedColumn${size}`, {
       display: 'flex',
@@ -199,10 +201,17 @@ export class BoxBuilder extends Builder {
   get overflowYScroll() { return this._add(`overflow-y-scroll`, { overflowY: 'scroll' })}
   get overflowXScroll() { return this._add(`overflow-y-scroll`, { overflowY: 'scroll' })}
 
+  get zIndexAuto() { return this._add("z-index", { zIndex: "auto" }) }
+  zIndex(z: number) { return this._add(`z-index${z}`, { zIndex: z }) }
+
   translateZ(n: number) { return this._add(`translate-z-${n}`, { transform: 'translateZ(0)' })}
 
   height(size: number | string) { return this._add(`height${size}`, { height: px(size) }) }
   width(size: number | string) { return this._add(`width${size}`, { width: px(size) }) }
+  minHeight(size: number | string) { return this._add(`minheight${size}`, { minHeight: px(size) }) }
+  minWidth(size: number | string) { return this._add(`minwidth${size}`, { minWidth: px(size) }) }
+  maxHeight(size: number | string) { return this._add(`maxheight${size}`, { maxHeight: px(size) }) }
+  maxWidth(size: number | string) { return this._add(`maxwidth${size}`, { maxWidth: px(size) }) }
 
   // Margins
   margin(size: string | number) { return this._add(`margin${size}`, { margin: px(size) }) }
