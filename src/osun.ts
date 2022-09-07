@@ -4,6 +4,8 @@
 // import {CSSProperties} from './types'
 import * as CSS from 'csstype'
 export type CSSProperties = CSS.PropertiesFallback
+export { Builder, builder, CssClass } from "./helpers"
+import { CssClass } from "./helpers"
 
 
 var sheet: string[] = []
@@ -102,11 +104,11 @@ export function rule(arr: any, ...values: (CssClass | string | (CssClass | strin
     _last_selector = sel
     sheet.push(`${sel}{`) // will be closed by conclude()
     for (var p of props) {
-      if (p instanceof CssClass) {
-        // console.log(p)
+      if ("all_props" in p) {
         for (var p2 of p.all_props) export_props(p2)
-      } else
+      } else {
         export_props(p)
+      }
     }
 
     if (raf_value === null) {
@@ -176,29 +178,6 @@ export function style(name: string, ...props_or_classes: (CssClass | CSSProperti
 }
 
 
-export class CssClass {
-
-  constructor(
-    public names: string[],
-    public props: CSSProperties[],
-    public parents: CssClass[] = [],
-    public specificity = 1
-  ) {
-
-  }
-
-  get all_props(): CSSProperties[] { return [...this.props, ...this.parents.reduce((acc, item) => (acc.push(...item.all_props), acc), [] as CSSProperties[])] }
-  get length() { return this.toString().length }
-
-  selector() { return this.specificity === 1 ? `.${this.names[0]}` : new Array(this.specificity).fill(this.names[0]).map(n => `.${n}`).join('') }
-
-  toString() { return this.names.join(' ') }
-  valueOf() {
-    return this.toString()
-  }
-
-}
-
 
 function scoped(str: string, fn: () => void) {
   conclude()
@@ -266,5 +245,3 @@ export function CssNamespace<T>(t: T, rulefn?: (t: T) => void): T {
   if (rulefn) rulefn(t)
   return t
 }
-
-export { Builder, builder } from "./helpers"

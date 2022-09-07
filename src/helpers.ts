@@ -1,7 +1,29 @@
 
 import type { PropertiesFallback, Property } from 'csstype'
-import { clsname, rule, CssClass } from './osun'
+import { clsname, rule } from './osun'
 
+export class CssClass {
+
+  constructor(
+    public names: string[],
+    public props: CSSProperties[],
+    public parents: CssClass[] = [],
+    public specificity = 1
+  ) {
+
+  }
+
+  get all_props(): CSSProperties[] { return [...this.props, ...this.parents.reduce((acc, item) => (acc.push(...item.all_props), acc), [] as CSSProperties[])] }
+  get length() { return this.toString().length }
+
+  selector() { return this.specificity === 1 ? `.${this.names[0]}` : new Array(this.specificity).fill(this.names[0]).map(n => `.${n}`).join('') }
+
+  toString() { return this.names.join(' ') }
+  valueOf() {
+    return this.toString()
+  }
+
+}
 
 //////////////// THE HELPERS
 
@@ -11,16 +33,16 @@ function px(px: string | number) {
 
 function col<T>(col: T | number): string | T {
   return typeof col === "number" ?
-    col < 0 ? `rgba(0, 0, 0, ${col})` : `rgba(255, 255, 255, ${col})`
+    (col < 0 ? `rgba(0, 0, 0, ${-col})` : `rgba(255, 255, 255, ${col})`)
   : col
 }
 
 export type CSSProperties = PropertiesFallback
 
-const _flexjust = (val: CSSProperties['justifyContent']) => { return { justifyContent: val } }
-const _flexalign = (val: CSSProperties['alignItems']) => { return { alignItems: val } }
-const _pos = (k: CSSProperties['position']) => { return { position: k } as CSSProperties }
-const _curs = (s: string) => { return {cursor: s} as CSSProperties }
+const _flexjust = (val: CSSProperties['justifyContent']) => ({ justifyContent: val } as CSSProperties)
+const _flexalign = (val: CSSProperties['alignItems']) => ({ alignItems: val } as CSSProperties)
+const _pos = (k: CSSProperties['position']) => ({ position: k } as CSSProperties)
+const _curs = (s: string) => ({cursor: s} as CSSProperties)
 
 /////////////////////////////////////////
 
@@ -82,9 +104,8 @@ export class Builder extends CssClass {
   get alignFirstBaseline() { return this._add('alignFirstBaseline', _flexalign('first baseline')) }
   get alignLastBaseline() { return this._add('alignLastBaseline', _flexalign('last baseline')) }
 
-
   /// methods
-  gap(size: string | number) { return this._add("gap", { gap: px(size) }) }
+  gap(size: string | number) { return this._add(`gap${size}`, { gap: px(size) }) }
   absoluteGrow(n: number) { return this._add('absolute-grow', { flexGrow: n, flexBasis: 0 }) }
   grow(n: number) { return this._add('grow', { flexGrow: n }) }
   justify(val: Property.JustifyContent) { return this._add(`justify-${val}`, {justifyContent: val}) }
@@ -161,7 +182,7 @@ export class Builder extends CssClass {
 
   fill(color: string | number) { return this._add(`fill${color}`, { fill: col(color) }) }
   stroke(color: string | number) { return this._add(`stroke${color}`, { stroke: col(color) }) }
-
+  content(str: string) { return this._add(`content${str}`, { content: `'${str}'` }) }
 
   background(bg: CSSProperties['background'] | number) { return this._add(`background${bg}`, { background: col(bg) }) }
 
@@ -178,6 +199,7 @@ export class Builder extends CssClass {
   get block() { return this._add(`block`, { display: 'block' }) }
   get inlineBlock() { return this._add(`inlineBlock`, { display: 'inline-block' }) }
   get displayNone() { return this._add(`displayNone`, { display: 'none' }) }
+  opacity(value: number) { return this._add(`opacity${value}`, { opacity: value }) }
   get cursorPointer() { return this._add(`cursorPointer`, _curs('pointer')) }
   get cursorHelp() { return this._add(`cursorHelp`, _curs('help')) }
   get cursorMove() { return this._add(`cursorMove`, _curs('move')) }
@@ -316,9 +338,3 @@ export class Builder extends CssClass {
 }
 
 export const builder = new Builder([], [])
-
-builder.absoluteGrow(1)
-builder.absoluteGrow(2)
-builder.absoluteGrow(3)
-builder.absoluteGrow(4)
-builder.absoluteGrow(5)
