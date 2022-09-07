@@ -9,8 +9,18 @@ function px(px: string | number) {
   return typeof px === 'number' ? `${px}px` : px
 }
 
+function col<T>(col: T | number): string | T {
+  return typeof col === "number" ?
+    col < 0 ? `rgba(0, 0, 0, ${col})` : `rgba(255, 255, 255, ${col})`
+  : col
+}
+
 export type CSSProperties = PropertiesFallback
 
+const _flexjust = (val: CSSProperties['justifyContent']) => { return { justifyContent: val } }
+const _flexalign = (val: CSSProperties['alignItems']) => { return { alignItems: val } }
+const _pos = (k: CSSProperties['position']) => { return { position: k } as CSSProperties }
+const _curs = (s: string) => { return {cursor: s} as CSSProperties }
 
 /////////////////////////////////////////
 
@@ -48,17 +58,8 @@ export class Builder extends CssClass {
     return cached_name
   }
 
-  get text() { return new TextBuilder(this.names, this.props) }
-  get flex() { return new FlexBuilder(this.names, this.props) }
-  get box() { return new BoxBuilder(this.names, this.props) }
 
-}
-
-
-const _flexjust = (val: CSSProperties['justifyContent']) => { return { justifyContent: val } }
-const _flexalign = (val: CSSProperties['alignItems']) => { return { alignItems: val } }
-
-export class FlexBuilder extends Builder {
+  // FLEX
   get row() { return this._add('row', { display: 'flex', flexDirection: 'row' }) }
   get column() { return this._add('column', { display: 'flex', flexDirection: 'column' }) }
   get inline() { return this._add('inline', { display: 'inline-flex' }) }
@@ -136,12 +137,10 @@ export class FlexBuilder extends Builder {
     })
   }
 
-}
-
-
-export class TextBuilder extends Builder {
+  // TEXT
 
   get bold() { return this._add('bold', { fontWeight: 'bolder' } ) }
+  get bolder() { return this._add("bolder", { fontWeight: "bolder" }) }
   get italic() { return this._add('italic', { fontStyle: 'italic' } ) }
   get underline() { return this._add('underline', { textDecoration: 'underline' } ) }
   get uppercase() { return this._add('uppercase', { textTransform: 'uppercase'} ) }
@@ -149,27 +148,22 @@ export class TextBuilder extends Builder {
   get capitalize() { return this._add('capitalize', { textTransform: 'capitalize'} ) }
   get superscript() { return this._add('superscript', { verticalAlign: 'super'} ) }
   get subscript() { return this._add('subscript', { verticalAlign: 'sub'} ) }
-  get centered() { return this._add('centered', { textAlign: 'center'} ) }
-  get right() { return this._add('right', { textAlign: 'right'} ) }
-  get justified() { return this._add('justified', { textAlign: 'justify'} ) }
+  get textCenter() { return this._add('centered', { textAlign: 'center'} ) }
+  get textRight() { return this._add('right', { textAlign: 'right'} ) }
+  get textJustified() { return this._add('justified', { textAlign: 'justify'} ) }
   get alignMiddle() { return this._add('alignMiddle', { verticalAlign: 'middle'} ) }
   get preLine() { return this._add('preLine', { whiteSpace: 'pre-line' } ) }
   get pre() { return this._add('pre', { whiteSpace: 'pre' } ) }
   get preWrap() { return this._add('preWrap', { whiteSpace: 'pre-wrap' } ) }
   get nowrap() { return this._add('nowrap', { whiteSpace: 'nowrap' } ) }
-  color(col: string) { return this._add(`color${col}`, { color: col }) }
-  size(size: string) { return this._add(`size${size}`, { fontSize: size }) }
+  color(color: string | number) { return this._add(`color${color}`, { color: col(color) }) }
+  fontSize(size: string | number) { return this._add(`size${size}`, { fontSize: px(size) }) }
 
-}
-
-
-const _pos = (k: CSSProperties['position']) => { return { position: k } as CSSProperties }
-const _curs = (s: string) => { return {cursor: s} as CSSProperties }
+  fill(color: string | number) { return this._add(`fill${color}`, { fill: col(color) }) }
+  stroke(color: string | number) { return this._add(`stroke${color}`, { stroke: col(color) }) }
 
 
-export class BoxBuilder extends Builder {
-
-  background(bg: CSSProperties['background']) { return this._add(`background${bg}`, { background: bg }) }
+  background(bg: CSSProperties['background'] | number) { return this._add(`background${bg}`, { background: col(bg) }) }
 
   get positionAbsolute() { return this._add('positionAbsolute', _pos('absolute' as any)) }
   get positionRelative() { return this._add('positionRelative', _pos('relative' as any)) }
@@ -234,44 +228,44 @@ export class BoxBuilder extends Builder {
   get paddingNone() { return this._add(`paddingNone`, { padding: '0' }) }
 
   // Border
-  borderTop(color: string, width: string = '1px', style: CSSProperties['borderTopStyle'] = 'solid') {
+  borderTop(color: string | number, width: string | number = '1px', style: CSSProperties['borderTopStyle'] = 'solid') {
     return this._add(
-      `bordertop-${color}-${width}-${style}`, { borderTopStyle: style, borderTopColor: color, borderTopWidth: width
+      `bordertop-${color}-${width}-${style}`, { borderTopStyle: style, borderTopColor: col(color), borderTopWidth: px(width)
   }) }
-  borderBottom(color: string, width: string = '1px', style: CSSProperties['borderBottomStyle'] = 'solid') {
+  borderBottom(color: string | number, width: string | number = '1px', style: CSSProperties['borderBottomStyle'] = 'solid') {
     return this._add(
-      `borderbottom-${color}-${width}-${style}`, { borderBottomStyle: style, borderBottomColor: color, borderBottomWidth: width
+      `borderbottom-${color}-${width}-${style}`, { borderBottomStyle: style, borderBottomColor: col(color), borderBottomWidth: px(width)
   }) }
-  borderLeft(color: string, width: string = '1px', style: CSSProperties['borderLeftStyle'] = 'solid') {
+  borderLeft(color: string | number, width: string | number = '1px', style: CSSProperties['borderLeftStyle'] = 'solid') {
     return this._add(
-      `borderleft-${color}-${width}-${style}`, { borderLeftStyle: style, borderLeftColor: color, borderLeftWidth: width
+      `borderleft-${color}-${width}-${style}`, { borderLeftStyle: style, borderLeftColor: col(color), borderLeftWidth: px(width)
   }) }
-  borderRight(color: string, width: string = '1px', style: CSSProperties['borderRightStyle'] = 'solid') {
+  borderRight(color: string | number, width: string | number = '1px', style: CSSProperties['borderRightStyle'] = 'solid') {
     return this._add(
-      `borderright-${color}-${width}-${style}`, { borderRightStyle: style, borderRightColor: color, borderRightWidth: width
+      `borderright-${color}-${width}-${style}`, { borderRightStyle: style, borderRightColor: col(color), borderRightWidth: px(width)
   }) }
-  borderVertical(color: string, width: string = '1px', style: CSSProperties['borderTopStyle'] = 'solid') { return this._add(
+  borderVertical(color: string | number, width: string | number = '1px', style: CSSProperties['borderTopStyle'] = 'solid') { return this._add(
     `bordervertical-${color}-${width}-${style}`, {
     borderTopStyle: style,
-    borderTopColor: color,
-    borderTopWidth: width,
+    borderTopColor: col(color),
+    borderTopWidth: px(width),
     borderBottomStyle: style,
-    borderBottomColor: color,
-    borderBottomWidth: width
+    borderBottomColor: col(color),
+    borderBottomWidth: px(width)
   }) }
-  borderHorizontal(color: string, width: string = '1px', style: CSSProperties['borderLeftStyle'] = 'solid') { return this._add(
+  borderHorizontal(color: string | number, width: string | number = '1px', style: CSSProperties['borderLeftStyle'] = 'solid') { return this._add(
     `borderhorizontal-${color}-${width}-${style}`, {
     borderLeftStyle: style,
-    borderLeftColor: color,
-    borderLeftWidth: width,
+    borderLeftColor: col(color),
+    borderLeftWidth: px(width),
     borderRightStyle: style,
-    borderRightColor: color,
-    borderRightWidth: width
+    borderRightColor: col(color),
+    borderRightWidth: px(width)
   }) }
 
-  border(color: string, width: string = '1px', style: CSSProperties['borderStyle'] = 'solid') { return this._add(
+  border(color: string, width: string | number = '1px', style: CSSProperties['borderStyle'] = 'solid') { return this._add(
     `border-${color}-${width}-${style}`,
-    { borderStyle: style, borderColor: color, borderWidth: width }
+    { borderStyle: style, borderColor: color, borderWidth: px(width) }
    ) }
   get borderCircle() { return this._add('borderCircle', { borderRadius: '50%' }) }
   get borderRound() { return this._add('borderRound', { borderRadius: `2px` }) }
@@ -315,19 +309,16 @@ export class BoxBuilder extends Builder {
     })
 
     // FIXME hover has a pretty bad cache handling, this should be improved
-    return new BoxBuilder([...this.names, newname], this.props) // !!
+    return new Builder([...this.names, newname], this.props) // !!
   }
 
 
 }
 
+export const builder = new Builder([], [])
 
-export const flex = new FlexBuilder([], [])
-export const box = new BoxBuilder([], [])
-export const text = new TextBuilder([], [])
-
-flex.absoluteGrow(1)
-flex.absoluteGrow(2)
-flex.absoluteGrow(3)
-flex.absoluteGrow(4)
-flex.absoluteGrow(5)
+builder.absoluteGrow(1)
+builder.absoluteGrow(2)
+builder.absoluteGrow(3)
+builder.absoluteGrow(4)
+builder.absoluteGrow(5)
