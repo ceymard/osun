@@ -309,7 +309,7 @@ export class Builder extends CssClass {
   get fullWidth() { return this._add('fullWidth', { width: '100%' }) }
   get fullHeight() { return this._add('fullHeight', { height: '100%' }) }
   get fullScreen() { return this._add('fullScreen', {
-    width: '100vw', height: '100vh', position: 'fixed',
+    width: '100%', height: '100%', position: 'fixed',
     left: 0,
     top: 0,
     transformOrigin: '50% 50%'
