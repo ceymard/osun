@@ -1,6 +1,6 @@
 {
   "name": "osun",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "main": "./lib/osun.js",
   "types": "./lib/osun.d.ts",
   "scripts": {
