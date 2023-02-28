@@ -5,7 +5,7 @@
 import * as CSS from 'csstype'
 export type CSSProperties = CSS.PropertiesFallback
 export { Builder, builder, CssClass } from "./helpers"
-import { CssClass } from "./helpers"
+import { Builder, CssClass } from "./helpers"
 
 
 var sheet: string[] = []
@@ -229,6 +229,24 @@ export function media(query: string, declarations: () => void) {
  */
 export function page(further_spec: string, declarations: () => void) {
   scoped(`@page ${further_spec}`, declarations)
+}
+
+
+export function localsheet<T>(fn: () => T): { stylesheet: string } & T {
+  conclude()
+  const oldsheet = sheet
+  const old_cache = Builder.cache
+
+  sheet = []
+  Builder.cache = new WeakMap()
+
+  const res = fn() ?? {}
+  const styles = getCurrentStyles()
+
+  sheet = oldsheet
+  Builder.cache = old_cache
+
+  return { ...res, stylesheet: styles } as { stylesheet: string } & T
 }
 
 

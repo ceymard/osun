@@ -46,9 +46,9 @@ const _curs = (s: string) => ({cursor: s} as CSSProperties)
 
 /////////////////////////////////////////
 
-const builder_cache = new WeakMap<any, {[key: string]: string}>()
 
 export class Builder extends CssClass {
+  static cache = new WeakMap<any, {[key: string]: string}>()
 
   protected _add(key: string, props: CSSProperties, cbk?: (cls: string) => void): this & string {
     const cons = this.constructor as {new(names: string[], props: CSSProperties[]): Builder}
@@ -59,15 +59,15 @@ export class Builder extends CssClass {
     return new cons([...this.names, name], [...this.props, props]) as unknown as this & string
   }
 
-  protected _cached(key: string, cbk?: (cls: string) => void) {
+  protected _cached(key: string, cbk: (cls: string) => void) {
     const cons = this.constructor as {new(names: string[], props: CSSProperties[]): Builder}
     key = key.replace(/\s+|\(|\)|\.|\-|<|>|,|~|\+|%|:|\[|\]|#/g, '-')
 
     // Try to get the
-    var cache = builder_cache.get(cons)
+    var cache = Builder.cache.get(cons)
     if (!cache) {
       cache = {}
-      builder_cache.set(cons, cache)
+      Builder.cache.set(cons, cache)
     }
 
     var cached_name = cache[key]
@@ -75,7 +75,7 @@ export class Builder extends CssClass {
       cached_name = clsname(key)
       cache[key] = cached_name
       // creating the rule for real here.
-      cbk?.(cached_name)
+      cbk(cached_name)
     }
     return cached_name
   }
