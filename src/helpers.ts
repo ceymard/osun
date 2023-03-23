@@ -16,6 +16,14 @@ export class CssClass {
   get all_props(): CSSProperties[] { return [...this.props, ...this.parents.reduce((acc, item) => (acc.push(...item.all_props), acc), [] as CSSProperties[])] }
   get length() { return this.toString().length }
 
+  part(part_name: string, ...props: (CssClass | CSSProperties)[]) {
+    rule`${this.selector()}::part(${part_name})`(...props)
+  }
+
+  hover(...props: (CssClass | CSSProperties)[]) {
+    rule`${this.selector()}:hover`(...props)
+  }
+
   selector() { return this.specificity === 1 ? `.${this.names[0]}` : new Array(this.specificity).fill(this.names[0]).map(n => `.${n}`).join('') }
 
   toString() { return this.names.join(' ') }
@@ -108,6 +116,7 @@ export class Builder extends CssClass {
   gap(size: string | number) { return this._add(`gap${size}`, { gap: px(size) }) }
   absoluteGrow(n: number) { return this._add('absolute-grow', { flexGrow: n, flexBasis: 0 }) }
   grow(n: number) { return this._add('grow', { flexGrow: n }) }
+  get grower() { return this._add("grower", { flexGrow: 1, flexBasis: 0 }) }
   justify(val: Property.JustifyContent) { return this._add(`justify-${val}`, {justifyContent: val}) }
 
   /** @deprecated use .gap() */
@@ -293,7 +302,7 @@ export class Builder extends CssClass {
   get borderRound() { return this._add('borderRound', { borderRadius: `2px` }) }
   borderRadius(rad: CSSProperties['borderRadius']) { return this._add(`border-radius-${rad}`, { borderRadius: rad }) }
 
-  get boxShadow() { return this._add('boxShadow', { boxShadow: `0 2px 2px rgba(0, 0, 0, 0.54)` }) }
+  boxShadow(shadow: string) { return this._add(`boxShadow-${shadow}`, { boxShadow: shadow }) }
 
   get noSpuriousBorders() { return this._add('noSpuriousBorders', {
     WebkitTapHighlightColor: `rgba(0, 0, 0, 0)`,

@@ -8,6 +8,13 @@ export { Builder, builder, CssClass } from "./helpers"
 import { Builder, CssClass } from "./helpers"
 
 
+declare module "csstype" {
+  interface StandardShorthandProperties {
+    [s: `--${string}`]: string | undefined
+  }
+}
+
+
 var sheet: string[] = []
 var raf_value: number | null = null
 
@@ -253,9 +260,21 @@ export function localsheet<T>(fn: () => T): { stylesheet: string } & T {
 /**
  * Append the following css to the next style node without processing.
  */
-export function raw(css: string) {
+export function raw(css: string | TemplateStringsArray, ...values: any[]) {
   conclude()
-  sheet.push(css)
+  if (typeof css === "string") {
+    sheet.push(css)
+    return css
+  } else {
+    let _css: string[] = []
+    for (let i = 0, l = css.length; i < l; i++) {
+      _css.push(css[i])
+      if (values[i] != null) _css.push(values[i].toString())
+    }
+    const res = _css.join("")
+    sheet.push(res)
+    return res
+  }
 }
 
 
