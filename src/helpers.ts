@@ -18,10 +18,12 @@ export class CssClass {
 
   part(part_name: string, ...props: (CssClass | CSSProperties)[]) {
     rule`${this.selector()}::part(${part_name})`(...props)
+    return this
   }
 
   hover(...props: (CssClass | CSSProperties)[]) {
     rule`${this.selector()}:hover`(...props)
+    return this
   }
 
   selector() { return this.specificity === 1 ? `.${this.names[0]}` : new Array(this.specificity).fill(this.names[0]).map(n => `.${n}`).join('') }
@@ -340,7 +342,7 @@ export class Builder extends CssClass {
     })
 
     // FIXME hover has a pretty bad cache handling, this should be improved
-    return new Builder([...this.names, newname], this.props) // !!
+    return new Builder([...this.names, newname], this.props) as this // !!
   }
 
 
