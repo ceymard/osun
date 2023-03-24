@@ -166,7 +166,8 @@ export function style(name: string, ...props_or_classes: (CssClass | CSSProperti
     if (typeof component === 'string') {
       names.push(component)
     } else if (component instanceof CssClass) {
-      names = [...names, ...component.names]
+      // names = [...names, ...component.names]
+      props.push(...component.props)
       parents.push(component)
     } else if (typeof component === 'number') {
       specificity = component
