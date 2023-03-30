@@ -1,13 +1,15 @@
 {
   "name": "osun",
-  "version": "0.5.2",
+  "version": "0.6.0",
   "main": "./lib/osun.js",
   "types": "./lib/osun.d.ts",
   "scripts": {
     "build": "tsc | wtsc",
     "watch": "tsc -w --preserveWatchOutput | wtsc"
   },
-  "files": ["./lib"],
+  "files": [
+    "./lib"
+  ],
   "devDependencies": {
     "typescript": "^4.8.2",
     "wtsc": "^0.1.2"
