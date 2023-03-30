@@ -13,14 +13,12 @@ function col<T>(col: T | number): string | T {
   : col
 }
 
-const _curs = (s: string) => ({cursor: s} as CSSProperties)
-
 /////////////////////////////////////////
 
 export class Builder extends CssClass {
-  protected _(val: CSSProperties) {
-    Object.assign(this.props, val)
-    return this
+  protected _(val: CSSProperties): this & string {
+    const b = new Builder(this.sheet, null, Object.assign({}, this.props, val))
+    return b as this & string
   }
 
   // FLEX

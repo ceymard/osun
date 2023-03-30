@@ -40,20 +40,6 @@ function crc32(str: string) {
 /**
  * Create a new style node with the currently defined styles.
  */
-// function createStyleNode() {
-//   if (sheet.length === 0) return
-//   conclude()
-//   if (typeof window !== "undefined") {
-//     var s = document.createElement("style")
-//     s.setAttribute("data-style", clsname("typecss"))
-//     s.textContent = getCurrentStyles()
-//     document.head.appendChild(s)
-//     raf_value = null
-//   } else {
-//     // we're in node.js
-//     console.log(getCurrentStyles())
-//   }
-// }
 
 // used to replace property names
 const re_prop = /([A-Z]|^([wW]ebkit|[mM]oz|[mM]s))/g
@@ -102,7 +88,7 @@ export class OsunSheet {
       const values = props[pname as keyof CSSProperties]
       for (let value of Array.isArray(values) ? values : [values]) {
         const n = pname.replace(re_prop, p => "-" + p.toLowerCase())
-        this.write(`${n}:${value!.toString()};`)
+        res.push(`${n}:${value!.toString()};`)
       }
     }
     return res.join("")
@@ -111,16 +97,17 @@ export class OsunSheet {
   emitClass(c: CssClass) {
     // This is where we check that a class was not already emitted
     const formatted = this.formatProps(c.props)
-    if (c.name == null) {
+    if (c.names == null) {
       // anonymous class !
       const crcfrm = crc32(formatted)
-      if (this.emitted.has(crcfrm)) return
-
+      c.names = [`o-${crcfrm.toString(36)}`]
+      // if (this.emitted.has(crcfrm)) return
     }
     const toemit = `${c.selector}{${formatted}}`
     const crc = crc32(toemit)
     if (!this.emitted.has(crc)) {
       this.write(toemit)
+      this.emitted.add(crc)
     }
   }
 
@@ -138,16 +125,18 @@ export class OsunSheet {
    *    that can possibly have been generated previously using cls()
    * @returns a string usable in `class` / `className`
    */
-  style(base: string, ...components: (CssClass | CSSProperties)[]): CssClass {
+  style(base: string, ...components: (string | CssClass | CSSProperties)[]): CssClass & string {
     const props: CSSProperties = {}
+    const names = [base]
     for (let comp of components) {
-      Object.assign(comp instanceof CssClass ? comp.props : comp)
+      if (typeof comp === "string") {
+        names.push(comp)
+      } else {
+        Object.assign(props, comp instanceof CssClass ? comp.props : comp)
+      }
     }
-    const res = new CssClass(this, base, props)
-    this.write(res.selector + "{")
-    this.formatProps(props)
-    this.write("}")
-    return res
+    const res = new CssClass(this, names, props)
+    return res as CssClass & string
   }
 
   nested(selector: string, decls: (sh: OsunSheet) => void) {
@@ -179,14 +168,16 @@ export class OsunSheet {
     }
 
     return (...props: (CSSProperties | CssClass)[]) => {
-      this.write(sparts.join(""))
-      this.write("{")
+      const propsstr: string[] = []
       for (let p of props) {
-        this.write(
-          this.formatProps(p instanceof CssClass ? p.props : p)
-        )
+        propsstr.push(this.formatProps(p instanceof CssClass ? p.props : p))
       }
-      this.write("}")
+      const to_emit = `${sparts.join("")}{${propsstr}}`
+      const crc = crc32(to_emit)
+      if (!this.emitted.has(crc)) {
+        this.write(to_emit)
+        this.emitted.add(crc)
+      }
     }
   }
 
@@ -199,20 +190,22 @@ export class OsunSheet {
   raw(css: string): this
   raw(css: string | TemplateStringsArray, ...values: any[]) {
     if (Array.isArray(css)) {
-      let parts: string[] = []
       for (let i = 0, l = css.length; i < l; i++) {
-        parts.push(css[i])
+        this.write(css[i])
         const val = values[i]
         if (val != null) {
           if (typeof val === "string") {
-            parts.push(val)
-          } else if (parts instanceof CssClass) {
-            parts.push(val.selector())
+            this.write(val)
+          } else if (val instanceof CssClass) {
+            this.write(val.selector)
           } else {
             // Add builder as values ?
           }
         }
       }
+    } else {
+      // raw css string...
+      this.write(css as string)
     }
 
     return this
@@ -220,31 +213,23 @@ export class OsunSheet {
 
 }
 
-const floor = Math.floor
-declare var perf_hooks: any
-const now = typeof window !== "undefined" ? () => performance.now() : perf_hooks.performance.now as () => number
-const start = floor(now() * 1000)
-const raf = typeof window !== "undefined" ? window.requestAnimationFrame : setTimeout
-/**
- * Generate a unique class name from a base
- */
-export function clsname(name: string) {
-  return `_${name}-${floor(now() * 1000) - start}`
-}
 
-
+let _nb = 1
 /**
  * A css class that mimicks strings but allows for a little more composability.
  */
 export class CssClass {
+  emitted = false
 
   constructor(
     public sheet: OsunSheet,
-    public name: string,
+    public names: string[] | null,
     public props: CSSProperties,
     public specificity = 1
   ) {
-
+    if (names?.[0]) {
+      names[0] += "-" + (_nb++).toString(36)
+    }
   }
 
   get length() { return this.toString().length }
@@ -253,22 +238,27 @@ export class CssClass {
     this.sheet.rule`${this}::part(${part_name})`(
       ...props
     )
-    return this
   }
 
   hover(...props: (CssClass | CSSProperties)[]) {
     this.sheet.rule`${this}:hover`(
       ...props
     )
-    return this
+  }
+
+  protected emit() {
+    this.emitted = true
+    this.sheet.emitClass(this)
   }
 
   get selector() {
-    const sel = `.${this.name}`
+    if (!this.emitted) this.emit()
+    const sel = `.${this.names![0]}`
     return this.specificity === 1 ? sel : new Array(this.specificity).fill(sel).join("") }
 
   toString() {
-    return this.name
+    if (!this.emitted) this.emit()
+    return this.names?.join(" ") ?? ""
   }
 
   valueOf() {

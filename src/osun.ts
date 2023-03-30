@@ -2,16 +2,16 @@
  * CSSProperties are shamelessly stolen from typestyle.
  */
 // import {CSSProperties} from "./types"
+export * from "./utils"
+export * from "./helpers"
+
+import { Builder } from "./helpers"
 import { OsunSheet } from "./utils"
 export { Builder } from "./helpers"
 
 class GlobalSheet extends OsunSheet {
   __requested: number | null = null
-  __styles: HTMLStyleElement[] = []
-
-  addDocument(doc: Document) {
-
-  }
+  // __styles: HTMLStyleElement[] = []
 
   write(str: string): void {
     super.write(str)
@@ -32,4 +32,5 @@ class GlobalSheet extends OsunSheet {
 const global = new GlobalSheet()
 export const style = global.style.bind(global)
 export const rule = global.rule.bind(global)
-export const raw = global.rule.bind(global)
+export const raw = global.raw.bind(global)
+export const builder = new Builder(global, null, {})
