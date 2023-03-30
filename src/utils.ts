@@ -66,9 +66,13 @@ export class OsunSheet {
     this.bits.length = 0
 
     // This only works for iOS >= 16.4, Chrome and Firefox support it already
-    const css = new CSSStyleSheet()
-    css.replace(css_text)
-    return css
+    if (can_adopt_style_sheets) {
+      const css = new CSSStyleSheet()
+      css.replace(css_text)
+      return css
+    } else {
+      return css_text
+    }
   }
 
   collectAsStyle() {
@@ -111,6 +115,11 @@ export class OsunSheet {
     }
   }
 
+  host(...components: (CssClass | CSSProperties)[]) {
+    this.rule`:host`(...components)
+    return this
+  }
+
   /**
    * Generate a unique class name and declare its properties as rules if
    * they were provided. The result is meant to be used to put in `class`
@@ -136,6 +145,7 @@ export class OsunSheet {
       }
     }
     const res = new CssClass(this, names, props)
+    res.emit()
     return res as CssClass & string
   }
 
@@ -246,7 +256,7 @@ export class CssClass {
     )
   }
 
-  protected emit() {
+  emit() {
     this.emitted = true
     this.sheet.emitClass(this)
   }
