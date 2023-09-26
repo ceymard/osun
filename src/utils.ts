@@ -182,7 +182,7 @@ export class OsunSheet {
       for (let p of props) {
         propsstr.push(this.formatProps(p instanceof CssClass ? p.props : p))
       }
-      const to_emit = `${sparts.join("")}{${propsstr}}`
+      const to_emit = `${sparts.join("")}{${propsstr.join("")}}`
       const crc = crc32(to_emit)
       if (!this.emitted.has(crc)) {
         this.write(to_emit)
